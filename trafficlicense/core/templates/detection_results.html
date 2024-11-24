@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-lg shadow-md">
+    <h2 class="text-xl font-bold mb-4">Detection Results</h2>
+    <div class="space-y-4">
+        {% for detection in detections %}
+        <div class="border p-4 rounded">
+            <h3 class="font-bold">Plate Number: {{ detection.plate }}</h3>
+            {% if detection.error %}
+                <p class="text-red-500">{{ detection.error }}</p>
+            {% else %}
+                <div class="grid grid-cols-2 gap-4">
+                    <p><strong>Owner:</strong> {{ detection.owner }}</p>
+                    <p><strong>Vehicle Type:</strong> {{ detection.vehicle_type }}</p>
+                    <p><strong>Make:</strong> {{ detection.make }}</p>
+                    <p><strong>Model:</strong> {{ detection.model }}</p>
+                    <p><strong>Confidence:</strong> {{ detection.confidence|floatformat:2 }}%</p>
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    <a href="{% url 'detect-plate' %}" class="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+        New Detection
+    </a>
+</div>
+{% endblock %}

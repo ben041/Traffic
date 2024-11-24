@@ -1,0 +1,32 @@
+<!-- templates/upload_form.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-lg shadow-md">
+    <h2 class="text-xl font-bold mb-4">Upload Image or Video</h2>
+    
+    {% if error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <strong class="font-bold">Error!</strong>
+        <span class="block sm:inline">{{ error }}</span>
+    </div>
+    {% endif %}
+    
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+        <div>
+            <label class="block text-gray-700">Image Upload</label>
+            <input type="file" name="image" accept="image/*" class="mt-1 block w-full">
+            <p class="text-sm text-gray-500 mt-1">Supported formats: PNG, JPG, JPEG</p>
+        </div>
+        <div>
+            <label class="block text-gray-700">Video Upload</label>
+            <input type="file" name="video" accept="video/*" class="mt-1 block w-full">
+            <p class="text-sm text-gray-500 mt-1">Supported formats: MP4, AVI</p>
+        </div>
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+            Detect Plates
+        </button>
+    </form>
+</div>
+{% endblock %}
