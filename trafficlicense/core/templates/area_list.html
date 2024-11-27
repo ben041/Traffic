@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera Areas</title>
+</head>
+<body>
+    <h1>Camera Installation Areas</h1>
+    <ul>
+        {% for area in areas %}
+            <li><a href="{% url 'video_feed' area.id %}">{{ area.name }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
