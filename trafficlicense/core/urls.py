@@ -12,8 +12,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.area_list, name='area_list'),
-    
+    path('', views.home, name='home'),
+    path('Area list/', views.area_list, name='area_list'),
+
     path('video_feed/<int:area_id>/', views.video_feed, name='video_feed'),
     path('toggle_video_source/<int:area_id>/', views.toggle_video_source, name='toggle_video_source'),
 

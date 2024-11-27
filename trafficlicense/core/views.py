@@ -184,6 +184,9 @@ import os
 # Configure the path to Tesseract OCR (adjust for your system)
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
+def home(request):
+    return render(request, 'dashboard.html')
+
 def area_list(request):
     """Display all camera installation areas."""
     areas = Area.objects.all()
