@@ -189,10 +189,23 @@ def area_list(request):
     areas = Area.objects.all()
     return render(request, 'area_list.html', {'areas': areas})
 
+from django.shortcuts import get_object_or_404, redirect, render
+from .models import Area
+
 def video_feed(request, area_id):
-    """Handle video feed from a selected area."""
     area = get_object_or_404(Area, id=area_id)
-    return render(request, 'video_feed.html', {'area': area})
+    context = {
+        'area': area
+    }
+    return render(request, 'video_feed.html', context)
+
+def toggle_video_source(request, area_id):
+    area = get_object_or_404(Area, id=area_id)
+    if request.method == 'POST':
+        # Toggle the use_video_file field
+        area.use_video_file = not area.use_video_file
+        area.save()
+    return redirect('video_feed', area_id=area.id)
 
 def upload_video(request):
     """Handle video upload and process plate detection."""

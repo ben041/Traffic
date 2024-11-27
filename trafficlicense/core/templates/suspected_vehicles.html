@@ -1,14 +1,10 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Suspected Vehicles</title>
-</head>
-<body>
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
     <h1>Suspected Vehicles</h1>
     <ul>
         {% for vehicle in vehicles %}
             <li>{{ vehicle.plate_number }} - {{ vehicle.owner_name }} ({{ vehicle.vehicle_type }})</li>
         {% endfor %}
     </ul>
-</body>
-</html>
+{% endblock %}

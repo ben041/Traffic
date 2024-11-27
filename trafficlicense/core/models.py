@@ -35,8 +35,9 @@ class Area(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     description = models.TextField()
-    video = models.FileField(upload_to='videos/', null=True, blank=True)
-    camera_feed_url = models.URLField(null=True, blank=True)
+    video = models.FileField(upload_to='videos/', blank=True, null=True)
+    video_url = models.URLField(blank=True, null=True)  # Add URL field
+    use_video_file = models.BooleanField(default=True)  # Toggle between file and URL
 
     def save(self, *args, **kwargs):
         """Auto-fill latitude and longitude if not provided."""
