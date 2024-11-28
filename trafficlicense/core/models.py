@@ -65,13 +65,12 @@ class Vehicle(models.Model):
     registration_date = models.DateField()
     insurance_expiry = models.DateField()
     last_inspection_date = models.DateField()
-    is_suspected = models.BooleanField(default=False)  # Mark as suspected vehicle
-    reason_suspected = models.TextField(null=True, blank=True)  # Reason for suspicion
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.plate_number} - {self.owner_name}"
+
 
 class PlateDetection(models.Model):
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, null=True)
@@ -84,3 +83,20 @@ class PlateDetection(models.Model):
 
     def __str__(self):
         return f"Detection: {self.detected_plate} at {self.timestamp}"
+
+
+from django.contrib.auth.models import User
+from django.db import models
+
+class SuspectVehicle(models.Model):
+    vehicle = models.OneToOneField(Vehicle, on_delete=models.CASCADE, related_name='suspect_details')
+    reported_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reported_suspects')
+    reason_suspected = models.TextField()  # Detailed reason for suspicion
+    crime_committed = models.CharField(max_length=255)  # Short description of the crime
+    crime_details = models.TextField(null=True, blank=True)  # Detailed description of the crime
+    reported_date = models.DateField(auto_now_add=True)  # When the vehicle was reported
+    police_station = models.CharField(max_length=100, null=True, blank=True)  # Station handling the case
+    is_active = models.BooleanField(default=True)  # Whether the case is active or resolved
+
+    def __str__(self):
+        return f"Suspect Vehicle: {self.vehicle.plate_number} - {self.crime_committed}"

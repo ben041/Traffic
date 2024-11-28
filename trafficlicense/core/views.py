@@ -260,7 +260,24 @@ def process_video(video, area):
 
     cap.release()
 
+from django.shortcuts import render, get_object_or_404
+from .models import Vehicle, SuspectVehicle
+
 def suspected_vehicles(request):
-    """Display suspected vehicles."""
-    vehicles = Vehicle.objects.filter(plate_number__in=['XYZ123', 'DEF456'])  # Example suspected plates
-    return render(request, 'suspected_vehicles.html', {'vehicles': vehicles})
+    """Display all suspected vehicles."""
+    suspected_list = SuspectVehicle.objects.select_related('vehicle').all()
+    return render(request, 'suspected_vehicles.html', {'suspected_vehicles': suspected_list})
+
+def all_vehicles(request):
+    """Display all registered vehicles."""
+    vehicles = Vehicle.objects.all()
+    return render(request, 'all_vehicles.html', {'vehicles': vehicles})
+
+def vehicle_details(request, plate_number):
+    """Display details of a specific vehicle."""
+    vehicle = get_object_or_404(Vehicle, plate_number=plate_number)
+    suspected_details = SuspectVehicle.objects.filter(vehicle=vehicle).first()  # Check if the vehicle is suspected
+    return render(request, 'vehicle_details.html', {
+        'vehicle': vehicle,
+        'suspect_details': suspected_details
+    })

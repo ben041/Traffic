@@ -20,4 +20,6 @@ urlpatterns = [
 
     path('upload/', views.upload_video, name='upload_video'),
     path('suspected/', views.suspected_vehicles, name='suspected_vehicles'),
+    path('all_vehicles/', views.all_vehicles, name='all_vehicles'),
+    path('vehicle/<str:plate_number>/', views.vehicle_details, name='vehicle_details'),
 ]

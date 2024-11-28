@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>All Vehicles</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Plate Number</th>
+                <th>Owner</th>
+                <th>Type</th>
+                <th>Color</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for vehicle in vehicles %}
+            <tr>
+                <td>{{ vehicle.plate_number }}</td>
+                <td>{{ vehicle.owner_name }}</td>
+                <td>{{ vehicle.vehicle_type }}</td>
+                <td>{{ vehicle.color }}</td>
+                <td><a href="{% url 'vehicle_details' vehicle.plate_number %}">View Details</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

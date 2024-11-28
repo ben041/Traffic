@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Vehicle Details</h1>
+    <p><strong>Plate Number:</strong> {{ vehicle.plate_number }}</p>
+    <p><strong>Owner:</strong> {{ vehicle.owner_name }}</p>
+    <p><strong>Phone:</strong> {{ vehicle.owner_phone }}</p>
+    <p><strong>Address:</strong> {{ vehicle.owner_address }}</p>
+    <p><strong>Type:</strong> {{ vehicle.vehicle_type }}</p>
+    <p><strong>Make:</strong> {{ vehicle.make }}</p>
+    <p><strong>Model:</strong> {{ vehicle.model }}</p>
+    <p><strong>Year:</strong> {{ vehicle.year }}</p>
+    <p><strong>Color:</strong> {{ vehicle.color }}</p>
+    <p><strong>Last Inspection Date:</strong> {{ vehicle.last_inspection_date }}</p>
+
+    {% if suspect_details %}
+        <h2>Suspected Vehicle Details</h2>
+        <p><strong>Crime:</strong> {{ suspect_details.crime_committed }}</p>
+        <p><strong>Details:</strong> {{ suspect_details.crime_details }}</p>
+        <p><strong>Reported By:</strong> {{ suspect_details.reported_by.username if suspect_details.reported_by else 'N/A' }}</p>
+        <p><strong>Reported Date:</strong> {{ suspect_details.reported_date }}</p>
+        <p><strong>Police Station:</strong> {{ suspect_details.police_station }}</p>
+    {% endif %}
+{% endblock %}
