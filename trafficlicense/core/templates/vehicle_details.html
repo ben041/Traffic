@@ -1,23 +1,211 @@
 {% extends 'base.html' %}
+{% load static %}
+{% block title %}Vehicle Details{% endblock %}
 {% block content %}
-    <h1>Vehicle Details</h1>
-    <p><strong>Plate Number:</strong> {{ vehicle.plate_number }}</p>
-    <p><strong>Owner:</strong> {{ vehicle.owner_name }}</p>
-    <p><strong>Phone:</strong> {{ vehicle.owner_phone }}</p>
-    <p><strong>Address:</strong> {{ vehicle.owner_address }}</p>
-    <p><strong>Type:</strong> {{ vehicle.vehicle_type }}</p>
-    <p><strong>Make:</strong> {{ vehicle.make }}</p>
-    <p><strong>Model:</strong> {{ vehicle.model }}</p>
-    <p><strong>Year:</strong> {{ vehicle.year }}</p>
-    <p><strong>Color:</strong> {{ vehicle.color }}</p>
-    <p><strong>Last Inspection Date:</strong> {{ vehicle.last_inspection_date }}</p>
 
-    {% if suspect_details %}
-        <h2>Suspected Vehicle Details</h2>
-        <p><strong>Crime:</strong> {{ suspect_details.crime_committed }}</p>
-        <p><strong>Details:</strong> {{ suspect_details.crime_details }}</p>
-        <p><strong>Reported By:</strong> {{ suspect_details.reported_by.username }}</p>
-        <p><strong>Reported Date:</strong> {{ suspect_details.reported_date }}</p>
-        <p><strong>Police Station:</strong> {{ suspect_details.police_station }}</p>
-    {% endif %}
+<div class="row">
+    <div class="col-lg-8">
+      <div class="row">
+        <div class="col-xl-6 mb-xl-0 mb-8">
+            <div class="number-plate">
+                <div class="flag-section">
+                    <div class="flag">
+                        <div class="red"></div>
+                        <div class="black"></div>
+                        <div class="green"></div>
+                    </div>
+                    <p class="country">MALAWI</p>
+                    <p class="security-code">MS 639</p>
+                    <p class="hologram">[Hologram Placeholder]</p>
+                    <p class="serial-number">MF-0204009</p>
+                </div>
+                <div class="plate-number">
+                    <h1>{{ vehicle.plate_number }}</h1>
+                </div>
+            </div>
+            
+
+            <style>
+                .number-plate {
+    width: 600px;
+    height: 200px;
+    background-color: yellow;
+    border: 5px solid black;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    position: relative;
+    font-family: Arial, sans-serif;
+}
+
+.flag-section {
+    width: 150px;
+    height: 100%;
+    background-color: white;
+    border-right: 2px solid black;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.flag {
+    width: 100%;
+    height: 60px;
+    display: flex;
+    margin-bottom: 5px;
+}
+
+.flag .red {
+    background-color: red;
+    height: 33%;
+    flex: 1;
+}
+
+.flag .black {
+    background-color: black;
+    height: 34%;
+    flex: 1;
+}
+
+.flag .green {
+    background-color: green;
+    height: 33%;
+    flex: 1;
+}
+
+.country {
+    margin-top: 5px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.security-code,
+.hologram,
+.serial-number {
+    margin: 3px 0;
+    font-size: 12px;
+}
+
+.plate-number {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.plate-number h1 {
+    font-size: 48px;
+    font-weight: bold;
+    letter-spacing: 5px;
+    color: black;
+    text-shadow: 1px 1px 2px gray;
+}
+
+            </style>            
+        </div>
+        
+        
+        <div class="col-md-12 mb-lg-0 mb-4">
+          <div class="card mt-4">
+            <div class="card-header pb-0 p-3">
+              <div class="row">
+                <div class="col-6 d-flex align-items-center">
+                  <h6 class="mb-0">Vehicle Details</h6>
+                </div>
+                <div class="col-6 text-end">
+                  <a class="btn bg-gradient-dark mb-0" href="#"><i class="material-symbols-rounded text-sm">add</i>&nbsp;&nbsp;Edit Vehicle Details</a>
+                </div>
+              </div>
+            </div>
+            <div class="card-body p-3">
+              <div class="row">
+                <ul class="list-group">
+                    <li class="list-group-item border-0 d-flex p-4 mb-2 bg-gray-100 border-radius-lg">
+                      <div class="d-flex flex-column">
+                        <span class="mb-2 text-xs">Plate Number: <span class="text-dark font-weight-bold ms-sm-2">{{ vehicle.plate_number }}</span></span>
+                        <span class="mb-2 text-xs">Owner: <span class="text-dark ms-sm-2 font-weight-bold">{{ vehicle.owner_name }}</span></span>
+                        <span class="mb-2 text-xs">Address: <span class="text-dark font-weight-bold ms-sm-2">{{ vehicle.owner_address }}</span></span>
+                        <span class="mb-2 text-xs">Type: <span class="text-dark ms-sm-2 font-weight-bold">{{ vehicle.vehicle_type }}</span></span>
+                        <span class="mb-2 text-xs">Make: <span class="text-dark font-weight-bold ms-sm-2">{{ vehicle.make }}</span></span>
+                        <span class="mb-2 text-xs">Model: <span class="text-dark ms-sm-2 font-weight-bold">{{ vehicle.model }}</span></span>
+                        <span class="text-xs">Year: <span class="text-dark ms-sm-2 font-weight-bold">{{ vehicle.year }}</span></span>
+                        <span class="mb-2 text-xs">Color: <span class="text-dark font-weight-bold ms-sm-2">{{ vehicle.color }}</span></span>
+                        <span class="mb-2 text-xs">Last Inspection Date: <span class="text-dark ms-sm-2 font-weight-bold">{{ vehicle.last_inspection_date }}</span></span>
+                      </div>
+                      
+                    </li>
+                  </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card h-100">
+        <div class="card-header pb-0 p-3">
+          <div class="row">
+            <div class="col-6 d-flex align-items-center">
+              <h6 class="mb-0">Suspected Vehicle Details</h6>
+            </div>
+            <div class="col-6 text-end">
+              <button class="btn btn-outline-primary btn-sm mb-0">Edit</button>
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-3 pb-0">
+            {% if suspect_details %}  
+          <ul class="list-group">
+            <li class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg">
+              <div class="d-flex flex-column">
+                <h6 class="mb-1 text-dark font-weight-bold text-sm">Crime:</h6>
+              </div>
+              <div class="d-flex align-items-center text-sm">
+                {{ suspect_details.crime_committed }}
+              </div>
+            </li>
+            <li class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg">
+              <div class="d-flex flex-column">
+                <h6 class="text-dark mb-1 font-weight-bold text-sm">Details:</h6>
+              </div>
+              <div class="d-flex align-items-center text-sm">
+                {{ suspect_details.crime_details }}
+              </div>
+            </li>
+            <li class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg">
+              <div class="d-flex flex-column">
+                <h6 class="text-dark mb-1 font-weight-bold text-sm">Reported by</h6>
+              </div>
+              <div class="d-flex align-items-center text-sm">
+                {{ suspect_details.reported_by.username }}
+              </div>
+            </li>
+            <li class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg">
+              <div class="d-flex flex-column">
+                <h6 class="text-dark mb-1 font-weight-bold text-sm">Reported Date:</h6>
+              </div>
+              <div class="d-flex align-items-center text-sm">
+                {{ suspect_details.reported_date }}
+              </div>
+            </li>
+            <li class="list-group-item border-0 d-flex justify-content-between ps-0 border-radius-lg">
+              <div class="d-flex flex-column">
+                <h6 class="text-dark mb-1 font-weight-bold text-sm">Police Station</h6>
+              </div>
+              <div class="d-flex align-items-center text-sm">
+                {{ suspect_details.police_station }}
+              </div>
+            </li>
+          </ul>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
 {% endblock %}
