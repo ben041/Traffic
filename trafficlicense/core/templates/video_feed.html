@@ -14,7 +14,7 @@
                     <div class="card-header pb-0 p-3">
                         <div class="row">
                           <div class="col-6 d-flex align-items-center">
-                            <h6 class="mb-0">Invoices</h6>
+                            <h6 class="mb-0">Live Feed for {{ area.name }}</h6>
                           </div>
                           <div class="col-6 text-end">
                             <form method="POST" action="{% url 'toggle_video_source' area.id %}">
@@ -27,7 +27,7 @@
                             </form>
                           </div>
                         </div>
-                    </div><hr>
+                    </div>
                     {% if area.video and area.video.url %}
                         <video src="{{ area.video.url }}" controls></video>
                     {% elif area.video_url %}
@@ -115,25 +115,4 @@
         </div>
       </div>
 
-
-    <h1>Video Feed for {{ area.name }}</h1>
-
-    <!-- Display video or URL -->
-    {% if area.video and area.video.url %}
-        <video src="{{ area.video.url }}" controls></video>
-    {% elif area.video_url %}
-        <iframe src="{{ area.video_url }}" width="640" height="360" frameborder="0" allowfullscreen></iframe>
-    {% else %}
-        <p>No video or URL available for this area.</p>
-    {% endif %}
-
-    <!-- Toggle button -->
-    <form method="POST" action="{% url 'toggle_video_source' area.id %}">
-        {% csrf_token %}
-        {% if area.video and area.video.url %}
-            <button type="submit" class="btn btn-primary">Switch to URL</button>
-        {% elif area.video_url %}
-            <button type="submit" class="btn btn-primary">Switch to File</button>
-        {% endif %}
-    </form>
 {% endblock %}
