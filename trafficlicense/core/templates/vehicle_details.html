@@ -16,7 +16,7 @@
         <h2>Suspected Vehicle Details</h2>
         <p><strong>Crime:</strong> {{ suspect_details.crime_committed }}</p>
         <p><strong>Details:</strong> {{ suspect_details.crime_details }}</p>
-        <p><strong>Reported By:</strong> {{ suspect_details.reported_by.username if suspect_details.reported_by else 'N/A' }}</p>
+        <p><strong>Reported By:</strong> {{ suspect_details.reported_by.username }}</p>
         <p><strong>Reported Date:</strong> {{ suspect_details.reported_date }}</p>
         <p><strong>Police Station:</strong> {{ suspect_details.police_station }}</p>
     {% endif %}

@@ -5,3 +5,4 @@ from .models import *
 admin.site.register(Area)
 admin.site.register(Vehicle)
 admin.site.register(PlateDetection)
+admin.site.register(SuspectVehicle)
