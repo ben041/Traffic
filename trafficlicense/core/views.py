@@ -354,3 +354,50 @@ def process_video_and_display(request, area_id):
         'detected_plates': detected_plates,
     }
     return render(request, 'video_feed.html', context)
+
+
+
+
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import Area, Vehicle, SuspectVehicle
+from .forms import AreaForm, VehicleForm, SuspectVehicleForm
+from django.contrib import messages
+
+# Add or Edit Area
+def add_edit_area(request, pk=None):
+    area = get_object_or_404(Area, pk=pk) if pk else None
+    if request.method == 'POST':
+        form = AreaForm(request.POST, request.FILES, instance=area)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Area saved successfully!')
+            return redirect('area_list')  # Replace with the name of the area list view
+    else:
+        form = AreaForm(instance=area)
+    return render(request, 'add_edit_area.html', {'form': form, 'area': area})
+
+# Add or Edit Vehicle
+def add_edit_vehicle(request, pk=None):
+    vehicle = get_object_or_404(Vehicle, pk=pk) if pk else None
+    if request.method == 'POST':
+        form = VehicleForm(request.POST, instance=vehicle)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Vehicle saved successfully!')
+            return redirect('vehicle_list')  # Replace with the name of the vehicle list view
+    else:
+        form = VehicleForm(instance=vehicle)
+    return render(request, 'add_edit_vehicle.html', {'form': form, 'vehicle': vehicle})
+
+# Add or Edit Suspect Vehicle
+def add_edit_suspect_vehicle(request, pk=None):
+    suspect_vehicle = get_object_or_404(SuspectVehicle, pk=pk) if pk else None
+    if request.method == 'POST':
+        form = SuspectVehicleForm(request.POST, instance=suspect_vehicle)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Suspect Vehicle saved successfully!')
+            return redirect('suspect_vehicle_list')  # Replace with the name of the suspect vehicle list view
+    else:
+        form = SuspectVehicleForm(instance=suspect_vehicle)
+    return render(request, 'add_edit_suspect_vehicle.html', {'form': form, 'suspect_vehicle': suspect_vehicle})

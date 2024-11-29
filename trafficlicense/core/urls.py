@@ -22,4 +22,11 @@ urlpatterns = [
     path('suspected/', views.suspected_vehicles, name='suspected_vehicles'),
     path('all_vehicles/', views.all_vehicles, name='all_vehicles'),
     path('vehicle/<str:plate_number>/', views.vehicle_details, name='vehicle_details'),
+
+    path('area/add/', views.add_edit_area, name='add_area'),
+    path('area/edit/<int:pk>/', views.add_edit_area, name='edit_area'),
+    path('vehicle/add/', views.add_edit_vehicle, name='add_vehicle'),
+    path('vehicle/edit/<int:pk>/', views.add_edit_vehicle, name='edit_vehicle'),
+    path('suspect-vehicle/add/', views.add_edit_suspect_vehicle, name='add_suspect_vehicle'),
+    path('suspect-vehicle/edit/<int:pk>/', views.add_edit_suspect_vehicle, name='edit_suspect_vehicle'),
 ]

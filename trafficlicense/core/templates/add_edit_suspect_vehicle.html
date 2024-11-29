@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{% if suspect_vehicle %}Edit Suspect Vehicle{% else %}Add Suspect Vehicle{% endif %}</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+{% endblock %}
