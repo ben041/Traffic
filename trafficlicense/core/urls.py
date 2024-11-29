@@ -15,8 +15,9 @@ urlpatterns = [
     path('Home', views.home, name='home'),
     path('Area list/', views.area_list, name='area_list'),
 
-    path('video_feed/<int:area_id>/', views.process_video_and_display, name='video_feed'),
+    path('video_feed/<int:area_id>/', views.video_feed, name='video_feed'),
     path('toggle_video_source/<int:area_id>/', views.toggle_video_source, name='toggle_video_source'),
+    path('start_plate_detection/<int:area_id>/', views.start_plate_detection, name='start_plate_detection'),
 
     # path('upload/', views.upload_video, name='upload_video'),
     path('suspected/', views.suspected_vehicles, name='suspected_vehicles'),

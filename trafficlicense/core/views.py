@@ -203,57 +203,6 @@ def area_list(request):
     areas = Area.objects.all()
     return render(request, 'area_list.html', {'areas': areas})
 
-from django.shortcuts import get_object_or_404, redirect, render
-from .models import Area
-
-# def video_feed(request, area_id):
-#     area = get_object_or_404(Area, id=area_id)
-#     context = {
-#         'area': area
-#     }
-#     return render(request, 'video_feed.html', context)
-
-def toggle_video_source(request, area_id):
-    area = get_object_or_404(Area, id=area_id)
-    if request.method == 'POST':
-        # Toggle the use_video_file field
-        area.use_video_file = not area.use_video_file
-        area.save()
-    return redirect('video_feed', area_id=area.id)
-
-
-# def process_video(video, area):
-#     """Process uploaded video for plate detection."""
-#     video_path = os.path.join('media', 'videos', video.name)
-#     cap = cv2.VideoCapture(video_path)
-#     plate_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_russian_plate_number.xml')
-    
-#     while cap.isOpened():
-#         ret, frame = cap.read()
-#         if not ret:
-#             break
-        
-#         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-#         plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(25, 25))
-        
-#         for (x, y, w, h) in plates:
-#             plate_img = frame[y:y + h, x:x + w]
-#             plate_text = pytesseract.image_to_string(plate_img, config='--psm 8').strip().replace(' ', '')
-            
-#             # Check if the plate exists in the system
-#             try:
-#                 vehicle = Vehicle.objects.get(plate_number=plate_text)
-#                 PlateDetection.objects.create(
-#                     vehicle=vehicle,
-#                     detected_plate=plate_text,
-#                     confidence=0.95,
-#                     image='detections/example.jpg',
-#                     video_file=video_path
-#                 )
-#             except Vehicle.DoesNotExist:
-#                 continue
-
-#     cap.release()
 
 from django.shortcuts import render, get_object_or_404
 from .models import Vehicle, SuspectVehicle
@@ -297,10 +246,95 @@ def vehicle_details(request, plate_number):
 
 
 
-from django.shortcuts import render, get_object_or_404
+# from django.shortcuts import render, get_object_or_404
+# import cv2
+# import pytesseract
+# from django.http import JsonResponse
+# from django.shortcuts import render, get_object_or_404
+# import cv2
+# import pytesseract
+# from .models import Area, Vehicle, PlateDetection, SuspectVehicle
+
+# def ajax_detect_plates(request, area_id):
+#     """Detect number plates from video and return results as JSON."""
+#     area = get_object_or_404(Area, id=area_id)
+#     video_path = area.video.path if area.use_video_file else area.video_url
+
+#     if not video_path:
+#         return JsonResponse({'error': 'No video file or URL provided for this area.'}, status=400)
+
+#     cap = cv2.VideoCapture(video_path)
+#     plate_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_russian_plate_number.xml')
+#     detected_plates = []
+
+#     while cap.isOpened():
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
+
+#         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#         plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(25, 25))
+
+#         for (x, y, w, h) in plates:
+#             plate_img = frame[y:y + h, x:x + w]
+#             plate_text = pytesseract.image_to_string(plate_img, config='--psm 8').strip().replace(' ', '')
+
+#             # Check if the plate exists in the database
+#             try:
+#                 vehicle = Vehicle.objects.get(plate_number=plate_text)
+#                 suspect_vehicle = SuspectVehicle.objects.filter(vehicle=vehicle, is_active=True).first()
+#                 classification = "Suspect" if suspect_vehicle else "Not Suspect"
+
+#                 # Save detection
+#                 PlateDetection.objects.create(
+#                     vehicle=vehicle,
+#                     detected_plate=plate_text,
+#                     confidence=0.95,  # Example confidence
+#                     area=area
+#                 )
+
+#                 detected_plates.append({
+#                     'plate': plate_text,
+#                     'classification': classification,
+#                     'vehicle_owner': vehicle.owner_name,
+#                     'vehicle_details': f"{vehicle.make} {vehicle.model} ({vehicle.color})"
+#                 })
+#             except Vehicle.DoesNotExist:
+#                 detected_plates.append({
+#                     'plate': plate_text,
+#                     'classification': "Unknown",
+#                     'vehicle_owner': "N/A",
+#                     'vehicle_details': "N/A"
+#                 })
+
+#     cap.release()
+#     return JsonResponse({'plates': detected_plates}, safe=False)
+
+
+# def process_video_and_display(request, area_id):
+#     area = get_object_or_404(Area, id=area_id)
+#     if not area.video:
+#         return render(request, 'video_feed.html', {'error': 'No video file uploaded for this area.'})
+
+#     # Detect plates and classify
+#     detected_plates = detect_and_classify_plates(area.video, area)
+
+#     context = {
+#         'area': area,
+#         'detected_plates': detected_plates,
+#     }
+#     return render(request, 'video_feed.html', context)
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import JsonResponse
 import cv2
 import pytesseract
 from .models import Area, Vehicle, PlateDetection, SuspectVehicle
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
+channel_layer = get_channel_layer()  # For broadcasting updates via WebSocket
+
 
 def detect_and_classify_plates(video, area):
     """Detect and classify number plates from a video."""
@@ -337,36 +371,68 @@ def detect_and_classify_plates(video, area):
                     area=area
                 )
 
-                detected_plates.append({
+                detection_result = {
                     'plate': plate_text,
                     'classification': classification,
-                    'vehicle': vehicle,
-                })
+                    'vehicle': {
+                        'owner_name': vehicle.owner_name,
+                        'make': vehicle.make,
+                        'model': vehicle.model,
+                    },
+                }
 
             except Vehicle.DoesNotExist:
-                detected_plates.append({
+                detection_result = {
                     'plate': plate_text,
                     'classification': "Unknown",
                     'vehicle': None,
-                })
+                }
+
+            detected_plates.append(detection_result)
+
+            # Send updates via WebSocket
+            async_to_sync(channel_layer.group_send)(
+                f"area_{area.id}",
+                {"type": "plate.detected", "plate_data": detection_result}
+            )
 
     cap.release()
     return detected_plates
 
-def process_video_and_display(request, area_id):
+
+def video_feed(request, area_id):
     area = get_object_or_404(Area, id=area_id)
-    if not area.video:
-        return render(request, 'video_feed.html', {'error': 'No video file uploaded for this area.'})
-
-    # Detect plates and classify
-    detected_plates = detect_and_classify_plates(area.video, area)
-
     context = {
         'area': area,
-        'detected_plates': detected_plates,
     }
     return render(request, 'video_feed.html', context)
 
+
+def start_plate_detection(request, area_id):
+    """Start number plate detection and return detected plates."""
+    area = get_object_or_404(Area, id=area_id)
+    if not area.video and not area.video_url:
+        return JsonResponse({'error': 'No video source available for this area.'}, status=400)
+
+    if area.use_video_file and area.video:
+        detected_plates = detect_and_classify_plates(area.video, area)
+    elif area.video_url:
+        # Implement URL video handling if necessary
+        return JsonResponse({'error': 'Video URL detection is not yet implemented.'}, status=400)
+    else:
+        return JsonResponse({'error': 'No valid video source.'}, status=400)
+
+    return JsonResponse({'detected_plates': detected_plates})
+
+
+def toggle_video_source(request, area_id):
+    """Toggle between video file and video URL for the area."""
+    area = get_object_or_404(Area, id=area_id)
+    if request.method == 'POST':
+        # Toggle the use_video_file field
+        area.use_video_file = not area.use_video_file
+        area.save()
+    return redirect('video_feed', area_id=area.id)
 
 
 
