@@ -3,7 +3,7 @@
 
 # urlpatterns = [
 #     path('', views.VehicleListView.as_view(), name='vehicle-list'),
-#     path('vehicle/<int:pk>/', views.VehicleDetailView.as_view(), name='vehicle-detail'),
+#     path('vehicle/<str:plate_number>/', views.VehicleDetailView.as_view(), name='vehicle-detail'),
 #     path('detect/', views.process_plate_detection, name='detect-plate'),
 # ]
 
@@ -24,11 +24,12 @@ urlpatterns = [
     path('vehicle/<str:plate_number>/', views.vehicle_details, name='vehicle_details'),
 
     path('area/add/', views.add_edit_area, name='add_area'),
-    path('area/edit/<int:pk>/', views.add_edit_area, name='edit_area'),
+    path('area/edit/<int:area_id>/', views.add_edit_area, name='edit_area'),
     path('vehicle/add/', views.add_edit_vehicle, name='add_vehicle'),
-    path('vehicle/edit/<int:pk>/', views.add_edit_vehicle, name='edit_vehicle'),
+    path('vehicle/edit/<str:plate_number>/', views.add_edit_vehicle, name='edit_vehicle'),
     path('suspect-vehicle/add/', views.add_edit_suspect_vehicle, name='add_suspect_vehicle'),
-    path('suspect-vehicle/edit/<int:pk>/', views.add_edit_suspect_vehicle, name='edit_suspect_vehicle'),
+    path('suspect-vehicle/edit/<str:plate_number>/', views.add_edit_suspect_vehicle, name='edit_suspect_vehicle'),
+
 
     path('signup/', views.signup_view, name='signup'),
     path('', views.signin_view, name='signin'),

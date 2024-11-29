@@ -37,9 +37,12 @@
                     <td>
                       <p class="text-sm font-weight-bold mb-0">{{ area.description }}</p>
                     </td>
-                      <td class="align-middle">
-                        <a href="{% url 'video_feed' area.id %}" class="text-secondary font-weight-bold text-xs" data-toggle="tooltip" data-original-title="Edit user">
+                      <td class="align-end text-center text-sm">
+                        <a href="{% url 'video_feed' area.id %}" class="btn btn-info font-weight-bold text-xs" data-toggle="tooltip" data-original-title="Edit user">
                           Live Analysis
+                        </a>
+                        <a href="{% url 'edit_area' area.id %}" class="btn btn-warning font-weight-bold text-xs" data-toggle="tooltip" data-original-title="Edit user">
+                          Edit Location
                         </a>
                     </td>
                 </tr>

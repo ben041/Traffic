@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block title %}All Vehicles{% endblock %}
 {% block content %}
 
 <div class="row">
@@ -7,6 +8,9 @@
         <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
           <div class="bg-gradient-dark shadow-dark border-radius-lg pt-4 pb-3">
             <h6 class="text-white text-capitalize ps-3">All Vehicles</h6>
+            <div class="ms-auto text-end">
+              <a href="{% url 'add_vehicle' %}" class="btn btn-secondary btn-sm mb-0">Add Vehicle</a>
+            </div>
           </div>
         </div>
         <div class="card-body px-0 pb-2">
@@ -18,7 +22,7 @@
                   <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Owner</th>
                   <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Type</th>
                   <th class="text-uppercase text-secondary text-xxs font-weight-bolder text-center opacity-7 ps-2">Color</th>
-                  <th class="text-secondary opacity-7"></th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder text-center opacity-7 ps-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -40,9 +44,12 @@
                     <td class="align-middle text-center text-sm">
                         <span class="badge badge-sm bg-gradient-success">{{ vehicle.color }}</span>
                       </td>
-                      <td class="align-middle">
-                        <a href="{% url 'vehicle_details' vehicle.plate_number %}" class="text-secondary font-weight-bold text-xs" data-toggle="tooltip" data-original-title="Edit user">
-                          View Details
+                      <td class="align-middle text-center text-sm">
+                        <a href="{% url 'vehicle_details' vehicle.plate_number %}" class="btn btn-outline-info font-weight-bold text-xs" data-toggle="tooltip" data-original-title="Edit user">
+                          View
+                        </a>
+                        <a href="{% url 'edit_vehicle' vehicle.plate_number %}" class="btn btn-outline-warning font-weight-bold text-xs" data-toggle="tooltip" data-original-title="Edit user">
+                          Edit
                         </a>
                     </td>
                 </tr>

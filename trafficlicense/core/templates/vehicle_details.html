@@ -136,6 +136,12 @@
                         <span class="text-xs">Year: <span class="text-dark ms-sm-2 font-weight-bold">{{ vehicle.year }}</span></span>
                         <span class="mb-2 text-xs">Color: <span class="text-dark font-weight-bold ms-sm-2">{{ vehicle.color }}</span></span>
                         <span class="mb-2 text-xs">Last Inspection Date: <span class="text-dark ms-sm-2 font-weight-bold">{{ vehicle.last_inspection_date }}</span></span>
+                        <span class="mb-2 text-xs">Expire Date: <span class="text-dark ms-sm-2 font-weight-bold">
+                          {{ vehicle.insurance_expiry|date:"F d, Y" }}
+                          {% if vehicle.insurance_expiry < today %}
+                          <span class="text-danger font-bold">(EXPIRED)</span>
+                          {% endif %}
+                      </p></span>
                       </div>
                       
                     </li>
@@ -154,8 +160,16 @@
               <h6 class="mb-0">Suspected Vehicle Details</h6>
             </div>
             <div class="col-6 text-end">
-              <button class="btn btn-outline-primary btn-sm mb-0">Edit</button>
-            </div>
+              {% if suspect_details %}
+                <a href="{% url 'edit_suspect_vehicle' suspect_details.vehicle.plate_number %}" class="btn btn-outline-primary btn-sm mb-0">
+                  Edit Suspect Vehicle
+                </a>
+              {% else %}
+                <a href="{% url 'add_suspect_vehicle' %}" class="btn btn-outline-primary btn-sm mb-0">
+                  Add Suspect Vehicle
+                </a>
+              {% endif %}
+            </div>            
           </div>
         </div>
         <div class="card-body p-3 pb-0">
@@ -202,6 +216,8 @@
               </div>
             </li>
           </ul>
+          {% else %}
+          No Crime Committed by vehicle 
           {% endif %}
         </div>
       </div>
