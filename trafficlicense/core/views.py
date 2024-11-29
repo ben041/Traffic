@@ -432,11 +432,12 @@ def signup_view(request):
 
 def signin_view(request):
     if request.method == 'POST':
-        email = request.POST['email']
+        username = request.POST['username']
         password = request.POST['password']
-        user = authenticate(request, email=email, password=password)  # Adjust for email-based login
+        user = authenticate(request, username=username, password=password) 
         if user is not None:
             login(request, user)
+            messages.success(request, "Logged in successfully.")
             return redirect('home')  # Redirect to home/dashboard page
         else:
             messages.error(request, "Invalid email or password.")
