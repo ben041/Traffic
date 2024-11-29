@@ -185,7 +185,18 @@ import os
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 def home(request):
-    return render(request, 'dashboard.html')
+    total_vehicles = Vehicle.objects.count()
+    total_areas = Area.objects.count()
+    total_suspects = SuspectVehicle.objects.count()
+    vehicles = Vehicle.objects.all()
+
+    context = {
+        'total_vehicles': total_vehicles,
+        'total_areas': total_areas,
+        'total_suspects': total_suspects,
+        'vehicles': vehicles,
+    }
+    return render(request, 'dashboard.html', context)
 
 def area_list(request):
     """Display all camera installation areas."""

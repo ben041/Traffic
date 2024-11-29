@@ -35,42 +35,39 @@
     <hr class="horizontal dark mt-0 mb-2">
     <div class="collapse navbar-collapse  w-auto " id="sidenav-collapse-main">
       <ul class="navbar-nav">
+        <!-- Dashboard -->
         <li class="nav-item">
-          <a class="nav-link active bg-gradient-dark text-white" href="{% url 'home' %}">
-            <i class="material-symbols-rounded opacity-5">dashboard</i>
-            <span class="nav-link-text ms-1">Dashboard</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link text-dark" href="{% url 'area_list' %}">
-            <i class="material-symbols-rounded opacity-5">table_view</i>
-            <span class="nav-link-text ms-1">Locations</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-            <a class="nav-link text-dark" href="{% url 'all_vehicles' %}">
-              <i class="material-symbols-rounded opacity-5">table_view</i>
-              <span class="nav-link-text ms-1">DataBase</span>
+            <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active bg-gradient-dark text-white{% else %}text-dark{% endif %}" href="{% url 'home' %}">
+                <i class="material-symbols-rounded opacity-5">dashboard</i>
+                <span class="nav-link-text ms-1">Dashboard</span>
             </a>
-          </li>
-
-        <li class="nav-item">
-          <a class="nav-link text-dark" href="{% url 'suspected_vehicles' %}">
-            <i class="material-symbols-rounded opacity-5">table_view</i>
-            <span class="nav-link-text ms-1">Suspected Vehicles</span>
-          </a>
         </li>
-        
+    
+        <!-- Locations -->
         <li class="nav-item">
-          <a class="nav-link text-dark" href="#">
-            <i class="material-symbols-rounded opacity-5">notifications</i>
-            <span class="nav-link-text ms-1">Notifications</span>
-          </a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'area_list' %}active bg-gradient-dark text-white{% else %}text-dark{% endif %}" href="{% url 'area_list' %}">
+                <i class="material-symbols-rounded opacity-5">location_on</i>
+                <span class="nav-link-text ms-1">Locations</span>
+            </a>
         </li>
-        
-        
+    
+        <!-- Vehicles Database -->
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'all_vehicles' %}active bg-gradient-dark text-white{% else %}text-dark{% endif %}" href="{% url 'all_vehicles' %}">
+                <i class="material-symbols-rounded opacity-5">directions_car</i>
+                <span class="nav-link-text ms-1">DataBase</span>
+            </a>
+        </li>
+    
+        <!-- Suspected Vehicles -->
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'suspected_vehicles' %}active bg-gradient-dark text-white{% else %}text-dark{% endif %}" href="{% url 'suspected_vehicles' %}">
+                <i class="material-symbols-rounded opacity-5">warning</i>
+                <span class="nav-link-text ms-1">Suspected Vehicles</span>
+            </a>
+        </li>
       </ul>
+    
     </div>
     <div class="sidenav-footer position-absolute w-100 bottom-0 ">
       <div class="mx-3">
