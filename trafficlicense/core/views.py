@@ -401,3 +401,49 @@ def add_edit_suspect_vehicle(request, pk=None):
     else:
         form = SuspectVehicleForm(instance=suspect_vehicle)
     return render(request, 'add_edit_suspect_vehicle.html', {'form': form, 'suspect_vehicle': suspect_vehicle})
+
+
+
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
+from django.shortcuts import render, redirect
+from django.contrib import messages
+
+def signup_view(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        email = request.POST['email']
+        password1 = request.POST['password1']
+        password2 = request.POST['password2']
+
+        if password1 == password2:
+            if User.objects.filter(username=username).exists():
+                messages.error(request, "Username already exists.")
+            elif User.objects.filter(email=email).exists():
+                messages.error(request, "Email is already in use.")
+            else:
+                User.objects.create_user(username=username, email=email, password=password1)
+                messages.success(request, "Account created successfully.")
+                return redirect('home')
+        else:
+            messages.error(request, "Passwords do not match.")
+    return render(request, 'signup.html')
+
+
+def signin_view(request):
+    if request.method == 'POST':
+        email = request.POST['email']
+        password = request.POST['password']
+        user = authenticate(request, email=email, password=password)  # Adjust for email-based login
+        if user is not None:
+            login(request, user)
+            return redirect('home')  # Redirect to home/dashboard page
+        else:
+            messages.error(request, "Invalid email or password.")
+    return render(request, 'signin.html')
+
+
+def logout_view(request):
+    logout(request)
+    messages.success(request, "Logged out successfully.")
+    return redirect('signin')
