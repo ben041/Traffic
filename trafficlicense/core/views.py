@@ -378,16 +378,31 @@ def add_edit_area(request, area_id):  # Change parameter name for clarity
     return render(request, 'add_edit_area.html', {'form': form, 'area': area})
 
 # Add or Edit Vehicle
-def add_edit_vehicle(request, plate_number):
-    vehicle = get_object_or_404(Vehicle, plate_number=plate_number)
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib import messages
+from .models import Vehicle
+from .forms import VehicleForm  # Make sure you have a form for Vehicle
+
+def add_edit_vehicle(request, plate_number=None):
+    if plate_number:
+        # Editing an existing vehicle
+        vehicle = get_object_or_404(Vehicle, plate_number=plate_number)
+    else:
+        # Adding a new vehicle
+        vehicle = None
+
     if request.method == 'POST':
         form = VehicleForm(request.POST, instance=vehicle)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Vehicle saved successfully!')
-            return redirect('vehicle_list')  # Replace with the name of the vehicle list view
+            if vehicle:
+                messages.success(request, 'Vehicle updated successfully!')
+            else:
+                messages.success(request, 'Vehicle added successfully!')
+            return redirect('vehicle_list')  # Replace with your vehicle list view name
     else:
         form = VehicleForm(instance=vehicle)
+
     return render(request, 'add_edit_vehicle.html', {'form': form, 'vehicle': vehicle})
 
 # Add or Edit Suspect Vehicle
@@ -403,12 +418,45 @@ def add_edit_suspect_vehicle(request, plate_number):
         if form.is_valid():
             form.save()
             messages.success(request, 'Suspect Vehicle saved successfully!')
-            return redirect('suspect_vehicle_list')  # Replace with the name of the suspect vehicle list view
+            return redirect('suspected_vehicles')  # Replace with the name of the suspect vehicle list view
     else:
         form = SuspectVehicleForm(instance=suspect_vehicle)
 
     return render(request, 'add_edit_suspect_vehicle.html', {'form': form, 'suspect_vehicle': suspect_vehicle})
 
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from django.urls import reverse
+from django.views.generic import DeleteView
+from django.http import HttpResponseRedirect
+from .models import Area, Vehicle, SuspectVehicle
+
+# Area Delete View
+def delete_area(request, plate_number):
+    area = get_object_or_404(Area, plate_number=plate_number)
+    if request.method == "POST":
+        area.delete()
+        messages.success(request, "Area deleted successfully!")
+        return redirect('area_list')  # Replace 'area_list' with your area list view name
+    return render(request, 'confirm_delete.html', {'object': area, 'type': 'Area'})
+
+# Vehicle Delete View
+def delete_vehicle(request, plate_number):
+    vehicle = get_object_or_404(Vehicle, plate_number=plate_number)
+    if request.method == "POST":
+        vehicle.delete()
+        messages.success(request, "Vehicle deleted successfully!")
+        return redirect('all_vehicles')  # Replace 'vehicle_list' with your vehicle list view name
+    return render(request, 'confirm_delete.html', {'object': vehicle, 'type': 'Vehicle'})
+
+# SuspectVehicle Delete View
+def delete_suspect_vehicle(request, plate_number):
+    suspect_vehicle = get_object_or_404(SuspectVehicle, plate_number=plate_number)
+    if request.method == "POST":
+        suspect_vehicle.delete()
+        messages.success(request, "Suspect Vehicle deleted successfully!")
+        return redirect('suspected_vehicles')  # Replace 'suspect_vehicle_list' with your suspect vehicle list view name
+    return render(request, 'confirm_delete.html', {'object': suspect_vehicle, 'type': 'Suspect Vehicle'})
 
 
 from django.contrib.auth.models import User

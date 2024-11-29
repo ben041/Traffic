@@ -25,10 +25,15 @@ urlpatterns = [
 
     path('area/add/', views.add_edit_area, name='add_area'),
     path('area/edit/<int:area_id>/', views.add_edit_area, name='edit_area'),
-    path('vehicle/add/', views.add_edit_vehicle, name='add_vehicle'),
+    path('vehicle/add-new/', views.add_edit_vehicle, name='add_vehicle'),
     path('vehicle/edit/<str:plate_number>/', views.add_edit_vehicle, name='edit_vehicle'),
     path('suspect-vehicle/add/', views.add_edit_suspect_vehicle, name='add_suspect_vehicle'),
     path('suspect-vehicle/edit/<str:plate_number>/', views.add_edit_suspect_vehicle, name='edit_suspect_vehicle'),
+
+    path('area/delete/<str:plate_number>/', views.delete_area, name='delete_area'),
+    path('vehicle/delete/<str:plate_number>/', views.delete_vehicle, name='delete_vehicle'),
+    path('suspect-vehicle/delete/<str:plate_number>/', views.delete_suspect_vehicle, name='delete_suspect_vehicle'),
+
 
 
     path('signup/', views.signup_view, name='signup'),

@@ -43,8 +43,14 @@
                         <span class="badge badge-sm bg-gradient-success">{{ suspect.reported_by.username }}</span>
                       </td>
                       <td class="align-middle">
-                        <a href="{% url 'vehicle_details' suspect.vehicle.plate_number %}" class="text-secondary font-weight-bold text-xs" data-toggle="tooltip" data-original-title="Edit user">
-                          View Details
+                        <a href="{% url 'vehicle_details' suspect.vehicle.plate_number %}" class="btn btn-info font-weight-bold text-xs" data-toggle="tooltip" data-original-title="Edit user">
+                          View
+                        </a>
+                        <a href="{% url 'edit_vehicle' suspect.vehicle.plate_number %}" class="btn btn-warning font-weight-bold text-xs" data-toggle="tooltip" data-original-title="Edit user">
+                          Edit
+                        </a>
+                        <a href="{% url 'delete_suspect_vehicle' suspect.vehicle.plate_number %}" class="btn btn-danger font-weight-bold text-xs" data-toggle="tooltip" data-original-title="Edit user">
+                          Delete
                         </a>
                     </td>
                 </tr>

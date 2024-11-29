@@ -9,9 +9,9 @@
         <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
           <div class="bg-gradient-dark shadow-dark border-radius-lg pt-4 pb-3">
             <h6 class="text-white text-capitalize ps-3">Camera Installation Areas</h6>
-            <div class="ms-auto text-centre">
+            <!-- <div class="ms-auto text-centre">
               <a href="{% url 'add_area' %}" class="btn btn-secondary btn-sm mb-0">Add Location</a>
-            </div>
+            </div> -->
           </div>
         </div>
         <div class="card-body px-0 pb-2">
@@ -44,7 +44,11 @@
                         <a href="{% url 'edit_area' area.id %}" class="btn btn-warning font-weight-bold text-xs" data-toggle="tooltip" data-original-title="Edit user">
                           Edit Location
                         </a>
+                        <a href="{% url 'delete_area' area.id %}" class="btn btn-danger font-weight-bold text-xs" data-toggle="tooltip" data-original-title="Edit user">
+                          Delete Location
+                        </a>
                     </td>
+
                 </tr>
                 {% endfor %}
                 
