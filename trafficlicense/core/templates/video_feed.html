@@ -28,13 +28,14 @@
                           </div>
                         </div>
                     </div>
-                    {% if area.video and area.video.url %}
+                    <img src="{% url 'video_feed1' %}" alt="Video Feed">
+                    <!-- {% if area.video and area.video.url %}
                         <video src="{{ area.video.url }}" controls></video>
                     {% elif area.video_url %}
                         <iframe src="{{ area.video_url }}" width="640" height="360" frameborder="0" allowfullscreen></iframe>
                     {% else %}
                         <p>No video or URL available for this area.</p>
-                    {% endif %}
+                    {% endif %} -->
                   </div>
                 </div>
               </div>
@@ -156,6 +157,3 @@
       </div>
 
 {% endblock %}
-
-
-

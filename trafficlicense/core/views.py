@@ -325,113 +325,275 @@ def vehicle_details(request, plate_number):
 #     }
 #     return render(request, 'video_feed.html', context)
 
+# from django.shortcuts import render, get_object_or_404, redirect
+# from django.http import JsonResponse
+# import cv2
+# import pytesseract
+# from .models import Area, Vehicle, PlateDetection, SuspectVehicle
+# from asgiref.sync import async_to_sync
+# from channels.layers import get_channel_layer
+
+# channel_layer = get_channel_layer()  # For broadcasting updates via WebSocket
+
+
+# def detect_and_classify_plates(video, area):
+#     """Detect and classify number plates from a video."""
+#     video_path = video.path  # Ensure this is a valid path
+#     cap = cv2.VideoCapture(video_path)
+#     plate_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_russian_plate_number.xml')
+#     detected_plates = []  # Store plate details for display
+
+#     while cap.isOpened():
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
+
+#         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#         plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(25, 25))
+
+#         for (x, y, w, h) in plates:
+#             plate_img = frame[y:y + h, x:x + w]
+#             plate_text = pytesseract.image_to_string(plate_img, config='--psm 8').strip().replace(' ', '')
+
+#             # Check if the plate exists in the Vehicle model
+#             try:
+#                 vehicle = Vehicle.objects.get(plate_number=plate_text)
+#                 suspect_vehicle = SuspectVehicle.objects.filter(vehicle=vehicle, is_active=True).first()
+#                 classification = "Suspect" if suspect_vehicle else "Not Suspect"
+
+#                 # Save detection
+#                 PlateDetection.objects.create(
+#                     vehicle=vehicle,
+#                     detected_plate=plate_text,
+#                     confidence=0.95,  # Example confidence
+#                     image=None,  # Add image saving logic if required
+#                     video_file=video_path,
+#                     area=area
+#                 )
+
+#                 detection_result = {
+#                     'plate': plate_text,
+#                     'classification': classification,
+#                     'vehicle': {
+#                         'owner_name': vehicle.owner_name,
+#                         'make': vehicle.make,
+#                         'model': vehicle.model,
+#                     },
+#                 }
+
+#             except Vehicle.DoesNotExist:
+#                 detection_result = {
+#                     'plate': plate_text,
+#                     'classification': "Unknown",
+#                     'vehicle': None,
+#                 }
+
+#             detected_plates.append(detection_result)
+
+#             # Send updates via WebSocket
+#             async_to_sync(channel_layer.group_send)(
+#                 f"area_{area.id}",
+#                 {"type": "plate.detected", "plate_data": detection_result}
+#             )
+
+#     cap.release()
+#     return detected_plates
+
+
+# def video_feed(request, area_id):
+#     area = get_object_or_404(Area, id=area_id)
+#     context = {
+#         'area': area,
+#     }
+#     return render(request, 'video_feed.html', context)
+
+
+# def start_plate_detection(request, area_id):
+#     """Start number plate detection and return detected plates."""
+#     area = get_object_or_404(Area, id=area_id)
+#     if not area.video and not area.video_url:
+#         return JsonResponse({'error': 'No video source available for this area.'}, status=400)
+
+#     if area.use_video_file and area.video:
+#         detected_plates = detect_and_classify_plates(area.video, area)
+#     elif area.video_url:
+#         # Implement URL video handling if necessary
+#         return JsonResponse({'error': 'Video URL detection is not yet implemented.'}, status=400)
+#     else:
+#         return JsonResponse({'error': 'No valid video source.'}, status=400)
+
+#     return JsonResponse({'detected_plates': detected_plates})
+
+
+# def toggle_video_source(request, area_id):
+#     """Toggle between video file and video URL for the area."""
+#     area = get_object_or_404(Area, id=area_id)
+#     if request.method == 'POST':
+#         # Toggle the use_video_file field
+#         area.use_video_file = not area.use_video_file
+#         area.save()
+#     return redirect('video_feed', area_id=area.id)
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 import cv2
+import numpy as np
 import pytesseract
 from .models import Area, Vehicle, PlateDetection, SuspectVehicle
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
+import logging
+import requests
+import tempfile
+import os
 
-channel_layer = get_channel_layer()  # For broadcasting updates via WebSocket
+# Configure logging
+logger = logging.getLogger(__name__)
 
+def download_video_from_url(video_url):
+    """
+    Download video from URL and save to a temporary file.
+    Returns path to temporary file or None if download fails.
+    """
+    try:
+        response = requests.get(video_url, stream=True)
+        response.raise_for_status()
 
-def detect_and_classify_plates(video, area):
-    """Detect and classify number plates from a video."""
-    video_path = video.path  # Ensure this is a valid path
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        for chunk in response.iter_content(chunk_size=8192):
+            temp_file.write(chunk)
+        temp_file.close()
+        return temp_file.name
+    except Exception as e:
+        logger.error(f"Video download error: {e}")
+        return None
+
+def preprocess_plate_image(plate_img):
+    """
+    Preprocess the plate image to improve OCR accuracy.
+    """
+    gray = cv2.cvtColor(plate_img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    gray = cv2.medianBlur(gray, 3)
+    return gray
+
+def detect_and_classify_plates(video_path, area):
+    """
+    Detect and classify number plates from a video.
+    """
     cap = cv2.VideoCapture(video_path)
     plate_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_russian_plate_number.xml')
-    detected_plates = []  # Store plate details for display
+    detected_plates = []
+    custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+
+    frame_count = 0
+    detection_interval = 10
 
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
 
+        frame_count += 1
+        if frame_count % detection_interval != 0:
+            continue
+
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(25, 25))
+        plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(75, 25))
 
         for (x, y, w, h) in plates:
-            plate_img = frame[y:y + h, x:x + w]
-            plate_text = pytesseract.image_to_string(plate_img, config='--psm 8').strip().replace(' ', '')
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            plate_img = frame[y:y+h, x:x+w]
+            preprocessed_plate = preprocess_plate_image(plate_img)
 
-            # Check if the plate exists in the Vehicle model
             try:
-                vehicle = Vehicle.objects.get(plate_number=plate_text)
-                suspect_vehicle = SuspectVehicle.objects.filter(vehicle=vehicle, is_active=True).first()
-                classification = "Suspect" if suspect_vehicle else "Not Suspect"
+                plate_text = pytesseract.image_to_string(preprocessed_plate, config=custom_config).strip().replace(' ', '')
+                plate_text = ''.join(char for char in plate_text if char.isalnum())
+                if len(plate_text) < 4:
+                    continue
 
-                # Save detection
-                PlateDetection.objects.create(
-                    vehicle=vehicle,
-                    detected_plate=plate_text,
-                    confidence=0.95,  # Example confidence
-                    image=None,  # Add image saving logic if required
-                    video_file=video_path,
-                    area=area
-                )
+                try:
+                    vehicle = Vehicle.objects.get(plate_number=plate_text)
+                    suspect_vehicle = SuspectVehicle.objects.filter(vehicle=vehicle, is_active=True).first()
+                    classification = "Suspect" if suspect_vehicle else "Not Suspect"
 
-                detection_result = {
-                    'plate': plate_text,
-                    'classification': classification,
-                    'vehicle': {
-                        'owner_name': vehicle.owner_name,
-                        'make': vehicle.make,
-                        'model': vehicle.model,
-                    },
-                }
+                    PlateDetection.objects.create(
+                        vehicle=vehicle,
+                        detected_plate=plate_text,
+                        confidence=0.85,
+                        video_file=video_path,
+                        area=area
+                    )
 
-            except Vehicle.DoesNotExist:
-                detection_result = {
-                    'plate': plate_text,
-                    'classification': "Unknown",
-                    'vehicle': None,
-                }
+                    detected_plates.append({
+                        'plate': plate_text,
+                        'classification': classification,
+                        'vehicle': {
+                            'owner_name': vehicle.owner_name,
+                            'make': vehicle.make,
+                            'model': vehicle.model,
+                        },
+                    })
 
-            detected_plates.append(detection_result)
+                except Vehicle.DoesNotExist:
+                    detected_plates.append({
+                        'plate': plate_text,
+                        'classification': "Unknown",
+                        'vehicle': None,
+                    })
 
-            # Send updates via WebSocket
-            async_to_sync(channel_layer.group_send)(
-                f"area_{area.id}",
-                {"type": "plate.detected", "plate_data": detection_result}
-            )
+            except Exception as e:
+                logger.error(f"OCR Processing error: {e}")
 
     cap.release()
     return detected_plates
 
-
+@login_required
 def video_feed(request, area_id):
+    """
+    Render video feed page for a specific area.
+    """
     area = get_object_or_404(Area, id=area_id)
-    context = {
-        'area': area,
-    }
+    context = {'area': area}
     return render(request, 'video_feed.html', context)
 
-
+@login_required
 def start_plate_detection(request, area_id):
-    """Start number plate detection and return detected plates."""
+    """
+    Start number plate detection and return detected plates.
+    """
     area = get_object_or_404(Area, id=area_id)
     if not area.video and not area.video_url:
         return JsonResponse({'error': 'No video source available for this area.'}, status=400)
 
-    if area.use_video_file and area.video:
-        detected_plates = detect_and_classify_plates(area.video, area)
-    elif area.video_url:
-        # Implement URL video handling if necessary
-        return JsonResponse({'error': 'Video URL detection is not yet implemented.'}, status=400)
-    else:
-        return JsonResponse({'error': 'No valid video source.'}, status=400)
+    try:
+        if area.use_video_file and area.video:
+            video_path = area.video.path
+        elif area.video_url:
+            video_path = download_video_from_url(area.video_url)
+            if not video_path:
+                return JsonResponse({'error': 'Failed to download video from URL.'}, status=400)
+        else:
+            return JsonResponse({'error': 'No valid video source.'}, status=400)
 
-    return JsonResponse({'detected_plates': detected_plates})
+        detected_plates = detect_and_classify_plates(video_path, area)
+        if area.video_url and 'temp' in video_path:
+            os.unlink(video_path)
 
+        return JsonResponse({'detected_plates': detected_plates})
+    except Exception as e:
+        logger.error(f"Plate detection error: {e}")
+        return JsonResponse({'error': 'An unexpected error occurred during plate detection.'}, status=500)
 
+@login_required
 def toggle_video_source(request, area_id):
-    """Toggle between video file and video URL for the area."""
+    """
+    Toggle between video file and video URL for the area.
+    """
     area = get_object_or_404(Area, id=area_id)
     if request.method == 'POST':
-        # Toggle the use_video_file field
         area.use_video_file = not area.use_video_file
         area.save()
+        messages.success(request, f"Video source switched to {'Video File' if area.use_video_file else 'Video URL'}")
     return redirect('video_feed', area_id=area.id)
 
 
@@ -580,3 +742,77 @@ def logout_view(request):
     logout(request)
     messages.success(request, "Logged out successfully.")
     return redirect('signin')
+
+
+
+
+
+
+
+
+
+
+
+
+
+from django.http import StreamingHttpResponse
+import cv2
+import pytesseract
+
+# Set up Tesseract path if necessary
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+def generate_frames():
+    # Load Haar cascade for license plates
+    plate_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_russian_plate_number.xml')
+    cap = cv2.VideoCapture(0)  # Open webcam
+
+    while True:
+        success, frame = cap.read()
+        if not success:
+            break
+
+        # Convert to grayscale
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # Detect plates
+        plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+        for (x, y, w, h) in plates:
+            # Draw rectangle and extract text
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            plate_roi = frame[y:y + h, x:x + w]
+            text = pytesseract.image_to_string(plate_roi, config='--psm 7')
+            cv2.putText(frame, text.strip(), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+        # Encode the frame
+        ret, buffer = cv2.imencode('.jpg', frame)
+        frame = buffer.tobytes()
+
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+def video_feed1(request):
+    return StreamingHttpResponse(generate_frames(), content_type='multipart/x-mixed-replace; boundary=frame')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
