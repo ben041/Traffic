@@ -797,7 +797,8 @@ def video_feed1(request):
 
 
 
-
+def gis_view(request):
+    return render(request, 'gis.html')
 
 
 

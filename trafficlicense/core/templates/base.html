@@ -66,6 +66,13 @@
                 <span class="nav-link-text ms-1">Suspected Vehicles</span>
             </a>
         </li>
+
+        <li class="nav-item">
+          <a class="nav-link {% if request.resolver_match.url_name == 'gis_view' %}active bg-gradient-dark text-white{% else %}text-dark{% endif %}" href="{% url 'gis_view' %}">
+              <i class="material-symbols-rounded opacity-5">map</i>
+              <span class="nav-link-text ms-1">GIS</span>
+          </a>
+        </li>
       </ul>
     
     </div>
@@ -103,7 +110,7 @@
               <a href="javascript:;" class="nav-link text-body p-0" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="material-symbols-rounded">notifications</i>
               </a>
-              <ul class="dropdown-menu  dropdown-menu-end  px-2 py-3 me-sm-n4" aria-labelledby="dropdownMenuButton">
+              <!-- <ul class="dropdown-menu  dropdown-menu-end  px-2 py-3 me-sm-n4" aria-labelledby="dropdownMenuButton">
                 <li class="mb-2">
                   <a class="dropdown-item border-radius-md" href="javascript:;">
                     <div class="d-flex py-1">
@@ -170,7 +177,7 @@
                     </div>
                   </a>
                 </li>
-              </ul>
+              </ul> -->
             </li>
             
             <li class="nav-item d-flex align-items-center">

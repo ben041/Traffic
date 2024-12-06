@@ -1,7 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
-
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 {% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <div class="row">
         <div class="col-lg-8">
@@ -98,62 +101,86 @@
                     {% endif %}
                 </div>
             </div>
-            <!-- <div class="card-body p-3 pb-0">
-              <ul class="list-group">
-                <li class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg">
-                  <div class="d-flex flex-column">
-                    <h6 class="mb-1 text-dark font-weight-bold text-sm">March, 01, 2020</h6>
-                    <span class="text-xs">#MS-415646</span>
-                  </div>
-                  <div class="d-flex align-items-center text-sm">
-                    $180
-                    <button class="btn btn-link text-dark text-sm mb-0 px-0 ms-4"><i class="material-symbols-rounded text-lg position-relative me-1">picture_as_pdf</i> PDF</button>
-                  </div>
-                </li>
-                <li class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg">
-                  <div class="d-flex flex-column">
-                    <h6 class="text-dark mb-1 font-weight-bold text-sm">February, 10, 2021</h6>
-                    <span class="text-xs">#RV-126749</span>
-                  </div>
-                  <div class="d-flex align-items-center text-sm">
-                    $250
-                    <button class="btn btn-link text-dark text-sm mb-0 px-0 ms-4"><i class="material-symbols-rounded text-lg position-relative me-1">picture_as_pdf</i> PDF</button>
-                  </div>
-                </li>
-                <li class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg">
-                  <div class="d-flex flex-column">
-                    <h6 class="text-dark mb-1 font-weight-bold text-sm">April, 05, 2020</h6>
-                    <span class="text-xs">#FB-212562</span>
-                  </div>
-                  <div class="d-flex align-items-center text-sm">
-                    $560
-                    <button class="btn btn-link text-dark text-sm mb-0 px-0 ms-4"><i class="material-symbols-rounded text-lg position-relative me-1">picture_as_pdf</i> PDF</button>
-                  </div>
-                </li>
-                <li class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg">
-                  <div class="d-flex flex-column">
-                    <h6 class="text-dark mb-1 font-weight-bold text-sm">June, 25, 2019</h6>
-                    <span class="text-xs">#QW-103578</span>
-                  </div>
-                  <div class="d-flex align-items-center text-sm">
-                    $120
-                    <button class="btn btn-link text-dark text-sm mb-0 px-0 ms-4"><i class="material-symbols-rounded text-lg position-relative me-1">picture_as_pdf</i> PDF</button>
-                  </div>
-                </li>
-                <li class="list-group-item border-0 d-flex justify-content-between ps-0 border-radius-lg">
-                  <div class="d-flex flex-column">
-                    <h6 class="text-dark mb-1 font-weight-bold text-sm">March, 01, 2019</h6>
-                    <span class="text-xs">#AR-803481</span>
-                  </div>
-                  <div class="d-flex align-items-center text-sm">
-                    $300
-                    <button class="btn btn-link text-dark text-sm mb-0 px-0 ms-4"><i class="material-symbols-rounded text-lg position-relative me-1">picture_as_pdf</i> PDF</button>
-                  </div>
-                </li>
-              </ul>
-            </div> -->
+            <div class="card-body p-3 pb-0">
+              <style>
+                 #map {
+                      width: 320px;
+                      height: 240px;
+                      margin: 20px 0;
+                      border: 2px solid #000;
+                  }
+              </style>
+              <div id="map"></div>
+
+            </div>
           </div>
         </div>
       </div>
+
+      <script>
+        // Initialize the map
+        const latitude = {{ area.latitude|default:0 }};
+        const longitude = {{ area.longitude|default:0 }};
+
+        const map = L.map('map').setView([latitude, longitude], 13);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Add a marker for the area
+        const marker = L.marker([latitude, longitude]).addTo(map)
+            .bindPopup('<b>{{ area.name }}</b><br>{{ area.description }}')
+            .openPopup();
+
+        // Function to create animated waves
+        function createBlinkingWaves(lat, lon) {
+            let radius = 500; // Initial radius
+            const maxRadius = 5000; // Maximum radius
+            const interval = 500; // Interval between wave animations
+
+            function addCircleAndIncreaseRadius() {
+                const circle = L.circle([lat, lon], {
+                    color: 'red',
+                    fillColor: '#f03',
+                    fillOpacity: 0.4,
+                    radius: radius
+                }).addTo(map);
+
+                radius += 500;
+
+                setTimeout(() => {
+                    map.removeLayer(circle);
+                }, interval);
+            }
+
+            function animateWaves() {
+                let count = 0;
+                const maxCount = 5; // Number of waves per animation cycle
+
+                function animate() {
+                    if (count < maxCount) {
+                        addCircleAndIncreaseRadius();
+                        count++;
+                        setTimeout(animate, interval);
+                    } else {
+                        // Reset for continuous animation
+                        radius = 500;
+                        count = 0;
+                        setTimeout(animate, interval);
+                    }
+                }
+
+                animate();
+            }
+
+            animateWaves();
+        }
+
+        // Trigger wave animation at the marker's location
+        createBlinkingWaves(latitude, longitude);
+    </script>
 
 {% endblock %}
