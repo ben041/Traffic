@@ -71,6 +71,18 @@ class Vehicle(models.Model):
     def __str__(self):
         return f"{self.plate_number} - {self.owner_name}"
 
+class DetectedPlate(models.Model):
+    plate = models.CharField(max_length=20, unique=True)
+    classification = models.CharField(max_length=20, choices=[
+        ('Suspect', 'Suspect'),
+        ('Not Suspect', 'Not Suspect'),
+        ('Unknown', 'Unknown'),
+    ])
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.SET_NULL, null=True, blank=True)
+    area_id = models.IntegerField()
+
+    def __str__(self):
+        return self.plate
 
 class PlateDetection(models.Model):
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, null=True)

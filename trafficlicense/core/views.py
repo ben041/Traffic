@@ -549,11 +549,11 @@ def detect_and_classify_plates(video_path, area):
 
 @login_required
 def video_feed(request, area_id):
-    """
-    Render video feed page for a specific area.
-    """
     area = get_object_or_404(Area, id=area_id)
-    context = {'area': area}
+    context = {
+        'area': area,
+        'detected_plates': generate_frames()  # Pass detected plates for real-time display
+    }
     return render(request, 'video_feed.html', context)
 
 @login_required
@@ -762,38 +762,88 @@ import pytesseract
 # Set up Tesseract path if necessary
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
+from django.db.models import Q
+
+from django.http import StreamingHttpResponse
+import cv2
+import pytesseract
+import numpy as np
+
+# Path to Tesseract OCR
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+# Load the Haar cascade for plate detection
+plate_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_russian_plate_number.xml')
+
 def generate_frames():
-    # Load Haar cascade for license plates
-    plate_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_russian_plate_number.xml')
-    cap = cv2.VideoCapture(0)  # Open webcam
+    try:
+        # Use DSHOW backend for compatibility
+        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        if not cap.isOpened():
+            raise Exception("Error: Unable to access the camera.")
 
-    while True:
-        success, frame = cap.read()
-        if not success:
-            break
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print("Failed to capture frame.")
+                break
 
-        # Convert to grayscale
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # Convert to grayscale for plate detection
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
-        # Detect plates
-        plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+            for (x, y, w, h) in plates:
+                # Draw rectangle around the plate
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+                
+                # Extract the ROI for OCR
+                plate_roi = frame[y:y+h, x:x+w]
+                plate_roi = cv2.cvtColor(plate_roi, cv2.COLOR_BGR2GRAY)
+                plate_roi = cv2.threshold(plate_roi, 127, 255, cv2.THRESH_BINARY)[1]
 
-        for (x, y, w, h) in plates:
-            # Draw rectangle and extract text
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            plate_roi = frame[y:y + h, x:x + w]
-            text = pytesseract.image_to_string(plate_roi, config='--psm 7')
-            cv2.putText(frame, text.strip(), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                # Perform OCR
+                text = pytesseract.image_to_string(plate_roi, config='--psm 7')
+                text = text.strip()
+                print(f"Detected Plate: {text}")
 
-        # Encode the frame
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
+                # Display detected plate on the frame
+                cv2.putText(frame, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
 
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            # Encode frame for streaming
+            _, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+    except GeneratorExit:
+        print("Client disconnected.")
+    except Exception as e:
+        print(f"Error in video stream: {e}")
+    finally:
+        cap.release()
 
 def video_feed1(request):
     return StreamingHttpResponse(generate_frames(), content_type='multipart/x-mixed-replace; boundary=frame')
+
+
+from django.http import JsonResponse
+from .models import DetectedPlate  # Assuming a model for detected plates exists
+
+def get_detected_plates(request, area_id):
+    plates = DetectedPlate.objects.filter(area_id=area_id).select_related('vehicle')
+    plate_data = [
+        {
+            'plate': plate.plate,
+            'classification': plate.classification,
+            'vehicle': {
+                'owner_name': plate.vehicle.owner_name if plate.vehicle else None,
+                'make': plate.vehicle.make if plate.vehicle else None,
+                'model': plate.vehicle.model if plate.vehicle else None,
+            } if plate.vehicle else None
+        }
+        for plate in plates
+    ]
+    return JsonResponse({'plates': plate_data})
 
 
 

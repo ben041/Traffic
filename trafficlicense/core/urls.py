@@ -39,6 +39,9 @@ urlpatterns = [
     path('suspect-vehicle/delete/<str:plate_number>/', views.delete_suspect_vehicle, name='delete_suspect_vehicle'),
 
 
+    path('detected-plates/<int:area_id>/', views.get_detected_plates, name='get_detected_plates'),
+
+
 
     path('signup/', views.signup_view, name='signup'),
     path('', views.signin_view, name='signin'),
