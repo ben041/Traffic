@@ -17,7 +17,7 @@ urlpatterns = [
 
     path('video_feed/<int:area_id>/', views.video_feed, name='video_feed'),
 
-    path('video_feed/', views.video_feed1, name='video_feed1'),
+    path('video_feed1/', views.video_feed1, name='video_feed1'),
 
     path('toggle_video_source/<int:area_id>/', views.toggle_video_source, name='toggle_video_source'),
     path('start_plate_detection/<int:area_id>/', views.start_plate_detection, name='start_plate_detection'),

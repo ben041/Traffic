@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
+{% block title %}{{ area.name }}{% endblock %}
+{% load static %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 {% block content %}
@@ -19,16 +21,7 @@
                           <div class="col-6 d-flex align-items-center">
                             <h6 class="mb-0">Live Feed for {{ area.name }}</h6>
                           </div>
-                          <div class="col-6 text-end">
-                            <form method="POST" action="{% url 'toggle_video_source' area.id %}">
-                                {% csrf_token %}
-                                {% if area.video and area.video.url %}
-                                    <button type="submit" class="btn btn-secondary">Switch to URL</button>
-                                {% elif area.video_url %}
-                                    <button type="submit" class="btn btn-primary">Switch to File</button>
-                                {% endif %}
-                            </form>
-                          </div>
+                          
                         </div>
                     </div>
                     <img src="{% url 'video_feed1' %}" alt="Video Feed">
@@ -86,11 +79,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if plate.vehicle %}
-                                                {{ plate.vehicle.owner_name }} - {{ plate.vehicle.make }} {{ plate.vehicle.model }}
-                                            {% else %}
-                                                N/A
-                                            {% endif %}
+                                            {{ plate.vehicle|default:"N/A" }}
                                         </td>
                                     </tr>
                                 {% endfor %}
@@ -100,7 +89,7 @@
                         <p>No plates detected in the video.</p>
                     {% endif %}
                 </div>
-            </div>
+            </div>            
             <div class="card-body p-3 pb-0">
               <style>
                  #map {
