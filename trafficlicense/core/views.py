@@ -745,7 +745,7 @@ def logout_view(request):
 
 
 
-
+#  maybe it will work
 from django.http import StreamingHttpResponse, JsonResponse
 import cv2
 import pytesseract
