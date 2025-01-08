@@ -24,8 +24,8 @@
                           
                         </div>
                     </div>
-                    <img src="{% url 'video_feed1' %}" alt="Video Feed">
-                    <!-- {% if area.video and area.video.url %}
+                    
+                    <img src="{% url 'video_feed1' %}" alt="Video Feed"><!-- {% if area.video and area.video.url %}
                         <video src="{{ area.video.url }}" controls></video>
                     {% elif area.video_url %}
                         <iframe src="{{ area.video_url }}" width="640" height="360" frameborder="0" allowfullscreen></iframe>
@@ -39,163 +39,194 @@
              
           </div>
         </div>
-        <div class="col-lg-4">
-          <div class="card h-100">
-            <div class="card-header pb-0 p-3">
-              <div class="row">
-                <div class="col-6 d-flex align-items-center">
-                  <h6 class="mb-0">RESULTS</h6>
-                </div>
-                <div class="col-6 text-end">
-                  <button class="btn btn-outline-primary btn-sm mb-0">View All</button>
-                </div>
-              </div>
-            </div>
-            <div class="card-body p-3 pb-0">
-                <div class="card-header pb-0 p-3">
-                    <h6 class="mb-0">Detected Plates for {{ area.name }}</h6>
-                </div>
-                <div class="card-body">
-                    <table class="table table-striped">
+
+
+        
+          
+              <!-- Results Section -->
+              <div class="col-lg-4">
+                <div class="card h-100">
+                  <div class="card-header pb-0 p-3">
+                    <div class="row">
+                      <div class="col-6 d-flex align-items-center">
+                        <h6 class="mb-0">Detection Results</h6>
+                      </div>
+                      <div class="col-6 text-end">
+                        <button class="btn btn-outline-primary btn-sm mb-0" onclick="updateDetectedPlates()">Refresh</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body p-3">
+                    <div class="card-header pb-0 p-3">
+                      <h6 class="mb-0">Detected Plates for {{ area.name }}</h6>
+                    </div>
+                    <div class="card-body">
+                      <table class="table table-striped table-bordered">
                         <thead>
-                            <tr>
-                                <th>Plate Number</th>
-                                <th>Classification</th>
-                                <th>Vehicle Details</th>
-                            </tr>
+                          <tr>
+                            <th>Plate Number</th>
+                            <th>Classification</th>
+                            <th>Vehicle Details</th>
+                          </tr>
                         </thead>
                         <tbody id="detected-plates-body">
-                            <!-- Rows will be dynamically inserted here -->
+                          <!-- Rows will be dynamically inserted here -->
                         </tbody>
-                    </table>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div class="card-body p-3 pb-0">
+                    <style>
+                       #map {
+                            width: 320px;
+                            height: 240px;
+                            margin: 20px 0;
+                            border: 2px solid #000;
+                        }
+                    </style>
+                    <div id="map"></div>
+      
+                  </div>
                 </div>
-            </div>
-            
-            <script>
-                const areaId = {{ area.id }}; // Pass area ID dynamically
-                const fetchPlatesUrl = "{% url 'get_detected_plates' area.id %}";
-            
-                function updateDetectedPlates() {
-                    fetch(fetchPlatesUrl)
-                        .then(response => response.json())
-                        .then(data => {
-                            const tbody = document.getElementById('detected-plates-body');
-                            tbody.innerHTML = ''; // Clear existing rows
-            
-                            if (data.plates.length > 0) {
-                                data.plates.forEach(plate => {
-                                    const row = document.createElement('tr');
-                                    const classificationBadge = {
-                                        'Suspect': '<span class="badge bg-danger">Suspect</span>',
-                                        'Not Suspect': '<span class="badge bg-success">Not Suspect</span>',
-                                        'Unknown': '<span class="badge bg-warning">Unknown</span>',
-                                    };
-            
-                                    row.innerHTML = `
-                                        <td>${plate.plate}</td>
-                                        <td>${classificationBadge[plate.classification] || classificationBadge['Unknown']}</td>
-                                        <td>
-                                            ${plate.vehicle ? 
-                                                `${plate.vehicle.owner_name} - ${plate.vehicle.make} ${plate.vehicle.model}` : 
-                                                'N/A'}
-                                        </td>
-                                    `;
-                                    tbody.appendChild(row);
-                                });
+              </div>
+          
+          <script>
+            const areaId = {{ area.id }}; // Pass area ID dynamically
+            const fetchPlatesUrl = "{% url 'get_detected_plates' area.id %}";
+
+            // A dictionary to keep track of existing plate rows by their plate number
+            const plateRows = {};
+
+            function updateDetectedPlates() {
+                fetch(fetchPlatesUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        const tbody = document.getElementById('detected-plates-body');
+
+                        // Iterate through the detected plates
+                        data.plates.forEach(plate => {
+                            const plateNumber = plate.plate;
+
+                            // If the plate already exists in the table, update it
+                            if (plateRows[plateNumber]) {
+                                const existingRow = plateRows[plateNumber];
+                                const classificationCell = existingRow.querySelector('.classification-cell');
+                                const vehicleCell = existingRow.querySelector('.vehicle-cell');
+
+                                // Update classification and vehicle details
+                                classificationCell.innerHTML = getClassificationBadge(plate.classification);
+                                vehicleCell.innerHTML = plate.vehicle
+                                    ? `${plate.vehicle.owner_name} - ${plate.vehicle.make} ${plate.vehicle.model}`
+                                    : 'N/A';
                             } else {
-                                tbody.innerHTML = '<tr><td colspan="3">No plates detected in the video.</td></tr>';
+                                // Otherwise, create a new row for the plate
+                                const row = document.createElement('tr');
+
+                                const classificationBadge = getClassificationBadge(plate.classification);
+                                row.innerHTML = `
+                                    <td>${plateNumber}</td>
+                                    <td class="classification-cell">${classificationBadge}</td>
+                                    <td class="vehicle-cell">${
+                                        plate.vehicle
+                                            ? `${plate.vehicle.owner_name} - ${plate.vehicle.make} ${plate.vehicle.model}`
+                                            : 'N/A'
+                                    }</td>
+                                `;
+
+                                // Add the new row to the table body and keep track of it
+                                tbody.appendChild(row);
+                                plateRows[plateNumber] = row;
                             }
-                        })
-                        .catch(error => console.error('Error fetching detected plates:', error));
-                }
-            
-                // Poll the server every 5 seconds
-                setInterval(updateDetectedPlates, 5000);
-            
-                // Initial load
-                updateDetectedPlates();
-            </script>
-                        
-            <div class="card-body p-3 pb-0">
-              <style>
-                 #map {
-                      width: 320px;
-                      height: 240px;
-                      margin: 20px 0;
-                      border: 2px solid #000;
-                  }
-              </style>
-              <div id="map"></div>
-
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <script>
-        // Initialize the map
-        const latitude = {{ area.latitude|default:0 }};
-        const longitude = {{ area.longitude|default:0 }};
-
-        const map = L.map('map').setView([latitude, longitude], 13);
-
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
-        // Add a marker for the area
-        const marker = L.marker([latitude, longitude]).addTo(map)
-            .bindPopup('<b>{{ area.name }}</b><br>{{ area.description }}')
-            .openPopup();
-
-        // Function to create animated waves
-        function createBlinkingWaves(lat, lon) {
-            let radius = 500; // Initial radius
-            const maxRadius = 5000; // Maximum radius
-            const interval = 500; // Interval between wave animations
-
-            function addCircleAndIncreaseRadius() {
-                const circle = L.circle([lat, lon], {
-                    color: 'red',
-                    fillColor: '#f03',
-                    fillOpacity: 0.4,
-                    radius: radius
-                }).addTo(map);
-
-                radius += 500;
-
-                setTimeout(() => {
-                    map.removeLayer(circle);
-                }, interval);
+                        });
+                    })
+                    .catch(error => console.error('Error fetching detected plates:', error));
             }
 
-            function animateWaves() {
-                let count = 0;
-                const maxCount = 5; // Number of waves per animation cycle
+            // Helper function to generate classification badges
+            function getClassificationBadge(classification) {
+                const badges = {
+                    'Suspect': '<span class="badge bg-danger">Suspect</span>',
+                    'Not Suspect': '<span class="badge bg-success">Not Suspect</span>',
+                    'Unknown': '<span class="badge bg-warning">Unknown</span>',
+                };
+                return badges[classification] || badges['Unknown'];
+            }
 
-                function animate() {
-                    if (count < maxCount) {
-                        addCircleAndIncreaseRadius();
-                        count++;
-                        setTimeout(animate, interval);
-                    } else {
-                        // Reset for continuous animation
-                        radius = 500;
-                        count = 0;
-                        setTimeout(animate, interval);
+            // Poll the server every 5 seconds
+            setInterval(updateDetectedPlates, 5000);
+
+            // Initial load
+            updateDetectedPlates();
+
+          </script>
+          
+          <script>
+            // Initialize the map
+            const latitude = {{ area.latitude|default:0 }};
+            const longitude = {{ area.longitude|default:0 }};
+    
+            const map = L.map('map').setView([latitude, longitude], 13);
+    
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+    
+            // Add a marker for the area
+            const marker = L.marker([latitude, longitude]).addTo(map)
+                .bindPopup('<b>{{ area.name }}</b><br>{{ area.description }}')
+                .openPopup();
+    
+            // Function to create animated waves
+            function createBlinkingWaves(lat, lon) {
+                let radius = 500; // Initial radius
+                const maxRadius = 5000; // Maximum radius
+                const interval = 500; // Interval between wave animations
+    
+                function addCircleAndIncreaseRadius() {
+                    const circle = L.circle([lat, lon], {
+                        color: 'red',
+                        fillColor: '#f03',
+                        fillOpacity: 0.4,
+                        radius: radius
+                    }).addTo(map);
+    
+                    radius += 500;
+    
+                    setTimeout(() => {
+                        map.removeLayer(circle);
+                    }, interval);
+                }
+    
+                function animateWaves() {
+                    let count = 0;
+                    const maxCount = 5; // Number of waves per animation cycle
+    
+                    function animate() {
+                        if (count < maxCount) {
+                            addCircleAndIncreaseRadius();
+                            count++;
+                            setTimeout(animate, interval);
+                        } else {
+                            // Reset for continuous animation
+                            radius = 500;
+                            count = 0;
+                            setTimeout(animate, interval);
+                        }
                     }
+    
+                    animate();
                 }
-
-                animate();
+    
+                animateWaves();
             }
+    
+            // Trigger wave animation at the marker's location
+            createBlinkingWaves(latitude, longitude);
+        </script>
+    
 
-            animateWaves();
-        }
-
-        // Trigger wave animation at the marker's location
-        createBlinkingWaves(latitude, longitude);
-    </script>
-
+        
 {% endblock %}

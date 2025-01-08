@@ -746,34 +746,18 @@ def logout_view(request):
 
 
 
-
-
-
-
-
-
-
-
-
-from django.http import StreamingHttpResponse
-import cv2
-import pytesseract
-
-# Set up Tesseract path if necessary
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-from django.db.models import Q
-
-from django.http import StreamingHttpResponse
+from django.http import StreamingHttpResponse, JsonResponse
 import cv2
 import pytesseract
 import numpy as np
+from .models import DetectedPlate  # Assuming a model for detected plates exists
 
-# Path to Tesseract OCR
+# Set up Tesseract OCR path if necessary
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # Load the Haar cascade for plate detection
 plate_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_russian_plate_number.xml')
+
 
 def generate_frames():
     try:
@@ -795,19 +779,31 @@ def generate_frames():
             for (x, y, w, h) in plates:
                 # Draw rectangle around the plate
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
-                
+
                 # Extract the ROI for OCR
                 plate_roi = frame[y:y+h, x:x+w]
                 plate_roi = cv2.cvtColor(plate_roi, cv2.COLOR_BGR2GRAY)
                 plate_roi = cv2.threshold(plate_roi, 127, 255, cv2.THRESH_BINARY)[1]
 
-                # Perform OCR
-                text = pytesseract.image_to_string(plate_roi, config='--psm 7')
-                text = text.strip()
-                print(f"Detected Plate: {text}")
+                # Perform OCR with confidence scores
+                ocr_data = pytesseract.image_to_data(plate_roi, config='--psm 7', output_type=pytesseract.Output.DICT)
+                detected_text = ocr_data['text']
+                confidences = ocr_data['conf']
 
-                # Display detected plate on the frame
-                cv2.putText(frame, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+                # Extract the highest confidence score for non-empty text
+                max_confidence = 0
+                detected_plate = ''
+                for text, conf in zip(detected_text, confidences):
+                    if text.strip() and int(conf) > max_confidence:  # Ensure confidence is an integer
+                        max_confidence = int(conf)
+                        detected_plate = text.strip()
+
+                # Log detected plate and confidence
+                print(f"Detected Plate: {detected_plate}, Confidence: {max_confidence}%")
+
+                # Display plate and confidence on the frame
+                display_text = f"{detected_plate} ({max_confidence}%)"
+                cv2.putText(frame, display_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
 
             # Encode frame for streaming
             _, buffer = cv2.imencode('.jpg', frame)
@@ -822,12 +818,10 @@ def generate_frames():
     finally:
         cap.release()
 
+
 def video_feed1(request):
     return StreamingHttpResponse(generate_frames(), content_type='multipart/x-mixed-replace; boundary=frame')
 
-
-from django.http import JsonResponse
-from .models import DetectedPlate  # Assuming a model for detected plates exists
 
 def get_detected_plates(request, area_id):
     plates = DetectedPlate.objects.filter(area_id=area_id).select_related('vehicle')
@@ -835,6 +829,7 @@ def get_detected_plates(request, area_id):
         {
             'plate': plate.plate,
             'classification': plate.classification,
+            'confidence': plate.confidence,  # Include confidence in the response
             'vehicle': {
                 'owner_name': plate.vehicle.owner_name if plate.vehicle else None,
                 'make': plate.vehicle.make if plate.vehicle else None,
@@ -844,6 +839,17 @@ def get_detected_plates(request, area_id):
         for plate in plates
     ]
     return JsonResponse({'plates': plate_data})
+
+
+
+
+
+
+
+
+
+
+
 
 
 
