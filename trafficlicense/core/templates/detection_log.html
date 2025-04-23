@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}detection{% endblock %}
+{% block content %}
+<h1>Detection Log</h1>
+<form method="GET">
+    <label>Area:</label>
+    <select name="area_id">
+        <option value="">All Areas</option>
+        {% for area in areas %}
+            <option value="{{ area.id }}">{{ area.name }}</option>
+        {% endfor %}
+    </select>
+    <label>Start Date:</label>
+    <input type="date" name="start_date">
+    <label>End Date:</label>
+    <input type="date" name="end_date">
+    <label>Plate Number:</label>
+    <input type="text" name="plate_number">
+    <button type="submit">Filter</button>
+</form>
+<table>
+    <tr>
+        <th>Plate</th>
+        <th>Vehicle</th>
+        <th>Area</th>
+        <th>Confidence</th>
+        <th>Timestamp</th>
+    </tr>
+    {% for detection in detections %}
+        <tr>
+            <td>{{ detection.detected_plate }}</td>
+            <td>{{ detection.vehicle.owner_name|default:"Unknown" }}</td>
+            <td>{{ detection.area.name|default:"N/A" }}</td>
+            <td>{{ detection.confidence|floatformat:2 }}</td>
+            <td>{{ detection.timestamp }}</td>
+        </tr>
+    {% endfor %}
+</table>
+{% endblock %}
