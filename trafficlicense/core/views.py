@@ -1,7 +1,5 @@
 # views.py
 from django.shortcuts import render, get_object_or_404, redirect
-from django.views.generic import ListView, DetailView
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse, StreamingHttpResponse, HttpResponseRedirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -19,8 +17,8 @@ import tempfile
 import os
 import logging
 from PIL import Image
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
+from ultralytics import YOLO
+import easyocr
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -28,11 +26,15 @@ logger = logging.getLogger(__name__)
 # Configure Tesseract OCR path
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-# Load Haar cascade for plate detection
-plate_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_russian_plate_number.xml')
+# Load YOLO model
+try:
+    yolo_model = YOLO('media/models/best.pt')  # Path to your trained YOLO model
+except Exception as e:
+    logger.error(f"Error loading YOLO model: {e}")
+    yolo_model = None
 
-# Channel layer for WebSocket
-channel_layer = get_channel_layer()
+# Initialize EasyOCR
+easyocr_reader = easyocr.Reader(['en'], gpu=False)
 
 # ------------------- General Views -------------------
 
@@ -52,8 +54,18 @@ def home(request):
     return render(request, 'dashboard.html', context)
 
 def gis_view(request):
-    """Render the GIS view."""
-    return render(request, 'gis.html')
+    """Render the GIS view with area detection data."""
+    areas = Area.objects.filter(latitude__isnull=False, longitude__isnull=False)
+    area_data = [
+        {
+            'name': area.name,
+            'latitude': area.latitude,
+            'longitude': area.longitude,
+            'detections': PlateDetection.objects.filter(area=area).count()
+        }
+        for area in areas
+    ]
+    return render(request, 'gis.html', {'areas': area_data})
 
 # ------------------- Authentication Views -------------------
 
@@ -100,42 +112,48 @@ def logout_view(request):
 
 # ------------------- Vehicle Views -------------------
 
-class VehicleListView(LoginRequiredMixin, ListView):
+@login_required
+def vehicle_list(request):
     """Display a paginated list of vehicles with search and filter options."""
-    model = Vehicle
-    template_name = 'vehicles/vehicle_list.html'
-    context_object_name = 'vehicles'
-    paginate_by = 10
+    queryset = Vehicle.objects.all()
+    search = request.GET.get('search')
+    vehicle_type = request.GET.get('vehicle_type')
 
-    def get_queryset(self):
-        queryset = Vehicle.objects.all()
-        search = self.request.GET.get('search')
-        vehicle_type = self.request.GET.get('vehicle_type')
+    if search:
+        queryset = queryset.filter(
+            Q(plate_number__icontains=search) |
+            Q(owner_name__icontains=search)
+        )
+    if vehicle_type:
+        queryset = queryset.filter(vehicle_type=vehicle_type)
 
-        if search:
-            queryset = queryset.filter(
-                Q(plate_number__icontains=search) |
-                Q(owner_name__icontains=search)
-            )
-        if vehicle_type:
-            queryset = queryset.filter(vehicle_type=vehicle_type)
+    vehicles = queryset.order_by('-created_at')
+    
+    # Simple pagination
+    page = int(request.GET.get('page', 1))
+    per_page = 10
+    total = len(vehicles)
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated_vehicles = vehicles[start:end]
+    
+    context = {
+        'vehicles': paginated_vehicles,
+        'today': timezone.now().date(),
+        'page': page,
+        'total_pages': (total + per_page - 1) // per_page,
+    }
+    return render(request, 'vehicles/vehicle_list.html', context)
 
-        return queryset.order_by('-created_at')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['today'] = timezone.now().date()
-        return context
-
-class VehicleDetailView(LoginRequiredMixin, DetailView):
+@login_required
+def vehicle_detail(request, plate_number):
     """Display details of a specific vehicle."""
-    model = Vehicle
-    template_name = 'vehicles/vehicle_detail.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['today'] = timezone.now().date()
-        return context
+    vehicle = get_object_or_404(Vehicle, plate_number=plate_number)
+    context = {
+        'vehicle': vehicle,
+        'today': timezone.now().date(),
+    }
+    return render(request, 'vehicles/vehicle_detail.html', context)
 
 def all_vehicles(request):
     """Display all registered vehicles."""
@@ -230,14 +248,40 @@ def add_edit_area(request, area_id):
         form = AreaForm(instance=area)
     return render(request, 'add_edit_area.html', {'form': form, 'area': area})
 
-def delete_area(request, plate_number):
+def delete_area(request, area_id):
     """Delete an area."""
-    area = get_object_or_404(Area, plate_number=plate_number)
+    area = get_object_or_404(Area, id=area_id)
     if request.method == "POST":
         area.delete()
         messages.success(request, "Area deleted successfully!")
         return redirect('area_list')
     return render(request, 'confirm_delete.html', {'object': area, 'type': 'Area'})
+
+# ------------------- Detection Log View -------------------
+
+@login_required
+def detection_log(request):
+    """Display a log of all plate detections."""
+    detections = PlateDetection.objects.select_related('vehicle', 'area').order_by('-timestamp')
+    area_id = request.GET.get('area_id')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    plate_number = request.GET.get('plate_number')
+
+    if area_id:
+        detections = detections.filter(area_id=area_id)
+    if start_date:
+        detections = detections.filter(timestamp__gte=start_date)
+    if end_date:
+        detections = detections.filter(timestamp__lte=end_date)
+    if plate_number:
+        detections = detections.filter(detected_plate__icontains=plate_number)
+
+    areas = Area.objects.all()
+    return render(request, 'detection_log.html', {
+        'detections': detections,
+        'areas': areas
+    })
 
 # ------------------- Plate Detection Views -------------------
 
@@ -245,34 +289,33 @@ def process_plate_detection(request):
     """Handle image or video upload and process plate detection."""
     if request.method == 'POST' and (request.FILES.get('image') or request.FILES.get('video')):
         def detect_plate(image):
-            """Detect license plates in an image."""
+            """Detect license plates in an image using YOLO."""
             try:
-                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                blur = cv2.GaussianBlur(gray, (5, 5), 0)
-                thresh = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                               cv2.THRESH_BINARY_INV, 11, 2)
-                contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                if not yolo_model:
+                    raise Exception("YOLO model not loaded")
+                
+                # Convert image to RGB for YOLO
+                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                results = yolo_model.predict(image_rgb, device='cpu')
                 
                 possible_plates = []
-                for cnt in contours:
-                    area = cv2.contourArea(cnt)
-                    if area > 1000:
-                        x, y, w, h = cv2.boundingRect(cnt)
-                        aspect_ratio = w / h
-                        if 2.0 <= aspect_ratio <= 5.5:
-                            possible_plates.append((x, y, w, h))
+                for result in results:
+                    for box in result.boxes:
+                        x1, y1, x2, y2 = map(int, box.xyxy[0])
+                        confidence = box.conf[0]
+                        possible_plates.append((x1, y1, x2-x1, y2-y1, confidence))
                 
                 results = []
-                for x, y, w, h in possible_plates:
-                    plate_img = gray[y:y+h, x:x+w]
-                    pil_image = Image.fromarray(plate_img)
-                    text = pytesseract.image_to_string(
-                        pil_image,
-                        config='--psm 7 --oem 3 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-                    )
-                    text = ''.join(e for e in text if e.isalnum())
-                    if len(text) > 4:
-                        results.append((text, 0.8))
+                for x, y, w, h, confidence in possible_plates:
+                    plate_img = image[y:y+h, x:x+w]
+                    plate_img = preprocess_plate_image(plate_img)
+                    
+                    # Use EasyOCR for plate text extraction
+                    ocr_results = easyocr_reader.readtext(plate_img, detail=1)
+                    for (bbox, text, ocr_confidence) in ocr_results:
+                        text = ''.join(e for e in text if e.isalnum())
+                        if len(text) > 4:  # Minimum plate length
+                            results.append((text, ocr_confidence * confidence))  # Combine confidences
                 
                 return results
             except Exception as e:
@@ -295,12 +338,16 @@ def process_plate_detection(request):
                 
                 cap = cv2.VideoCapture(temp_path)
                 results = []
+                frame_count = 0
+                process_interval = 5
                 while cap.isOpened():
                     ret, frame = cap.read()
                     if not ret:
                         break
-                    frame_results = detect_plate(frame)
-                    results.extend(frame_results)
+                    frame_count += 1
+                    if frame_count % process_interval == 0:
+                        frame_results = detect_plate(frame)
+                        results.extend(frame_results)
                 cap.release()
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
@@ -354,20 +401,24 @@ def download_video_from_url(video_url):
         return None
 
 def preprocess_plate_image(plate_img):
-    """Preprocess the plate image to improve OCR accuracy."""
+    """Advanced preprocessing for license plate image."""
     gray = cv2.cvtColor(plate_img, cv2.COLOR_BGR2GRAY)
-    gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    gray = cv2.medianBlur(gray, 3)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    gray = clahe.apply(gray)
+    gray = cv2.bilateralFilter(gray, 11, 17, 17)
+    gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
     return gray
 
 def detect_and_classify_plates(video_path, area):
-    """Detect and classify number plates from a video."""
+    """Detect and classify number plates from a video using YOLO."""
+    if not yolo_model:
+        logger.error("YOLO model not loaded")
+        return []
+
     cap = cv2.VideoCapture(video_path)
     detected_plates = []
-    custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-
     frame_count = 0
-    detection_interval = 10
+    detection_interval = 5
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -378,52 +429,59 @@ def detect_and_classify_plates(video_path, area):
         if frame_count % detection_interval != 0:
             continue
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(75, 25))
+        # YOLO detection
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = yolo_model.predict(rgb_frame, device='cpu')
 
-        for (x, y, w, h) in plates:
-            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            plate_img = frame[y:y+h, x:x+w]
-            preprocessed_plate = preprocess_plate_image(plate_img)
+        for result in results:
+            for box in result.boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                confidence = box.conf[0]
+                
+                # Draw rectangle for visualization
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                
+                # Extract plate region for OCR
+                plate_img = frame[y1:y2, x1:x2]
+                preprocessed_plate = preprocess_plate_image(plate_img)
+                
+                # Use EasyOCR for plate text extraction
+                ocr_results = easyocr_reader.readtext(preprocessed_plate, detail=1)
+                for (bbox, plate_text, ocr_confidence) in ocr_results:
+                    plate_text = ''.join(char for char in plate_text if char.isalnum())
+                    if len(plate_text) < 4:
+                        continue
 
-            try:
-                plate_text = pytesseract.image_to_string(preprocessed_plate, config=custom_config).strip().replace(' ', '')
-                plate_text = ''.join(char for char in plate_text if char.isalnum())
-                if len(plate_text) < 4:
-                    continue
+                    try:
+                        vehicle = Vehicle.objects.get(plate_number=plate_text)
+                        suspect_vehicle = SuspectVehicle.objects.filter(vehicle=vehicle, is_active=True).first()
+                        classification = "Suspect" if suspect_vehicle else "Not Suspect"
 
-                try:
-                    vehicle = Vehicle.objects.get(plate_number=plate_text)
-                    suspect_vehicle = SuspectVehicle.objects.filter(vehicle=vehicle, is_active=True).first()
-                    classification = "Suspect" if suspect_vehicle else "Not Suspect"
+                        detection = PlateDetection.objects.create(
+                            vehicle=vehicle,
+                            detected_plate=plate_text,
+                            confidence=ocr_confidence * confidence,  # Combine YOLO and OCR confidence
+                            video_file=video_path,
+                            area=area
+                        )
 
-                    PlateDetection.objects.create(
-                        vehicle=vehicle,
-                        detected_plate=plate_text,
-                        confidence=0.85,
-                        video_file=video_path,
-                        area=area
-                    )
+                        detection_result = {
+                            'plate': plate_text,
+                            'classification': classification,
+                            'vehicle': {
+                                'owner_name': vehicle.owner_name,
+                                'make': vehicle.make,
+                                'model': vehicle.model,
+                            },
+                        }
 
-                    detected_plates.append({
-                        'plate': plate_text,
-                        'classification': classification,
-                        'vehicle': {
-                            'owner_name': vehicle.owner_name,
-                            'make': vehicle.make,
-                            'model': vehicle.model,
-                        },
-                    })
-
-                except Vehicle.DoesNotExist:
-                    detected_plates.append({
-                        'plate': plate_text,
-                        'classification': "Unknown",
-                        'vehicle': None,
-                    })
-
-            except Exception as e:
-                logger.error(f"OCR Processing error: {e}")
+                        detected_plates.append(detection_result)
+                    except Vehicle.DoesNotExist:
+                        detected_plates.append({
+                            'plate': plate_text,
+                            'classification': "Unknown",
+                            'vehicle': None,
+                        })
 
     cap.release()
     return detected_plates
@@ -434,7 +492,6 @@ def video_feed(request, area_id):
     area = get_object_or_404(Area, id=area_id)
     context = {
         'area': area,
-        'detected_plates': generate_frames()
     }
     return render(request, 'video_feed.html', context)
 
@@ -475,41 +532,59 @@ def toggle_video_source(request, area_id):
     return redirect('video_feed', area_id=area.id)
 
 def generate_frames():
-    """Generate video frames for streaming with plate detection."""
+    """Generate video frames for streaming with YOLO-based plate detection."""
     try:
         cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
         if not cap.isOpened():
             raise Exception("Error: Unable to access the camera.")
 
+        plate_tracker = {}  # Store plate detections for temporal smoothing
+        frame_count = 0
+        process_interval = 5
+
         while True:
             ret, frame = cap.read()
             if not ret:
-                print("Failed to capture frame.")
+                logger.error("Failed to capture frame.")
                 break
 
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+            frame_count += 1
+            if frame_count % process_interval == 0 and yolo_model:
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                results = yolo_model.predict(rgb_frame, device='cpu')
 
-            for (x, y, w, h) in plates:
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
-                plate_roi = frame[y:y+h, x:x+w]
-                plate_roi = cv2.cvtColor(plate_roi, cv2.COLOR_BGR2GRAY)
-                plate_roi = cv2.threshold(plate_roi, 127, 255, cv2.THRESH_BINARY)[1]
+                for result in results:
+                    for box in result.boxes:
+                        x1, y1, x2, y2 = map(int, box.xyxy[0])
+                        confidence = box.conf[0]
+                        
+                        # Draw rectangle
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        
+                        # Extract plate region for OCR
+                        plate_roi = frame[y1:y2, x1:x2]
+                        preprocessed_plate = preprocess_plate_image(plate_roi)
+                        
+                        # Use EasyOCR for OCR
+                        ocr_results = easyocr_reader.readtext(preprocessed_plate, detail=1)
+                        for (bbox, detected_plate, ocr_confidence) in ocr_results:
+                            detected_plate = ''.join(char for char in detected_plate if char.isalnum())
+                            if not detected_plate or len(detected_plate) < 4:
+                                continue
 
-                ocr_data = pytesseract.image_to_data(plate_roi, config='--psm 7', output_type=pytesseract.Output.DICT)
-                detected_text = ocr_data['text']
-                confidences = ocr_data['conf']
+                            # Temporal smoothing
+                            if detected_plate in plate_tracker:
+                                plate_tracker[detected_plate]['count'] += 1
+                                plate_tracker[detected_plate]['confidence'] = max(
+                                    plate_tracker[detected_plate]['confidence'], ocr_confidence * confidence
+                                )
+                            else:
+                                plate_tracker[detected_plate] = {'count': 1, 'confidence': ocr_confidence * confidence}
 
-                max_confidence = 0
-                detected_plate = ''
-                for text, conf in zip(detected_text, confidences):
-                    if text.strip() and int(conf) > max_confidence:
-                        max_confidence = int(conf)
-                        detected_plate = text.strip()
-
-                print(f"Detected Plate: {detected_plate}, Confidence: {max_confidence}%")
-                display_text = f"{detected_plate} ({max_confidence}%)"
-                cv2.putText(frame, display_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+                            # Display if detected multiple times
+                            if plate_tracker[detected_plate]['count'] >= 3:
+                                display_text = f"{detected_plate} ({plate_tracker[detected_plate]['confidence'] * 100:.2f}%)"
+                                cv2.putText(frame, display_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
 
             _, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
@@ -517,14 +592,14 @@ def generate_frames():
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
     except GeneratorExit:
-        print("Client disconnected.")
+        logger.info("Client disconnected.")
     except Exception as e:
-        print(f"Error in video stream: {e}")
+        logger.error(f"Error in video stream: {e}")
     finally:
         cap.release()
 
 def video_feed1(request):
-    """Stream video feed with plate detection."""
+    """Stream video feed with YOLO-based plate detection."""
     return StreamingHttpResponse(generate_frames(), content_type='multipart/x-mixed-replace; boundary=frame')
 
 def get_detected_plates(request, area_id):
