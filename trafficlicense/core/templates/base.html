@@ -68,6 +68,13 @@
         </li>
 
         <li class="nav-item">
+          <a class="nav-link {% if request.resolver_match.url_name == 'detection_log' %}active bg-gradient-dark text-white{% else %}text-dark{% endif %}" href="{% url 'detection_log' %}">
+              <i class="material-symbols-rounded opacity-5">warning</i>
+              <span class="nav-link-text ms-1">Detected Vehicles</span>
+          </a>
+      </li>
+
+        <li class="nav-item">
           <a class="nav-link {% if request.resolver_match.url_name == 'gis_view' %}active bg-gradient-dark text-white{% else %}text-dark{% endif %}" href="{% url 'gis_view' %}">
               <i class="material-symbols-rounded opacity-5">map</i>
               <span class="nav-link-text ms-1">GIS</span>

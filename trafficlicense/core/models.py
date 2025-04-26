@@ -1,5 +1,6 @@
 from django.db import models
 from geopy.geocoders import Nominatim
+from django.contrib.auth.models import User
 
 class Area(models.Model):
     DISTRICT_CHOICES = [
@@ -36,8 +37,8 @@ class Area(models.Model):
     longitude = models.FloatField(null=True, blank=True)
     description = models.TextField()
     video = models.FileField(upload_to='videos/', blank=True, null=True)
-    video_url = models.URLField(blank=True, null=True)  # Add URL field
-    use_video_file = models.BooleanField(default=True)  # Toggle between file and URL
+    video_url = models.URLField(blank=True, null=True)
+    use_video_file = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs):
         """Auto-fill latitude and longitude if not provided."""
@@ -80,9 +81,10 @@ class DetectedPlate(models.Model):
     ])
     vehicle = models.ForeignKey(Vehicle, on_delete=models.SET_NULL, null=True, blank=True)
     area_id = models.IntegerField()
+    confidence = models.FloatField(default=0.0)  # Added confidence field
 
     def __str__(self):
-        return self.plate
+        return f"{self.plate} ({self.confidence:.2f})"
 
 class PlateDetection(models.Model):
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, null=True)
@@ -96,19 +98,15 @@ class PlateDetection(models.Model):
     def __str__(self):
         return f"Detection: {self.detected_plate} at {self.timestamp}"
 
-
-from django.contrib.auth.models import User
-from django.db import models
-
 class SuspectVehicle(models.Model):
     vehicle = models.OneToOneField(Vehicle, on_delete=models.CASCADE, related_name='suspect_details')
     reported_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reported_suspects')
-    reason_suspected = models.TextField()  # Detailed reason for suspicion
-    crime_committed = models.CharField(max_length=255)  # Short description of the crime
-    crime_details = models.TextField(null=True, blank=True)  # Detailed description of the crime
-    reported_date = models.DateField(auto_now_add=True)  # When the vehicle was reported
-    police_station = models.CharField(max_length=100, null=True, blank=True)  # Station handling the case
-    is_active = models.BooleanField(default=True)  # Whether the case is active or resolved
+    reason_suspected = models.TextField()
+    crime_committed = models.CharField(max_length=255)
+    crime_details = models.TextField(null=True, blank=True)
+    reported_date = models.DateField(auto_now_add=True)
+    police_station = models.CharField(max_length=100, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"Suspect Vehicle: {self.vehicle.plate_number} - {self.crime_committed}"

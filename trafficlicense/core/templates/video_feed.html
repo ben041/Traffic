@@ -63,7 +63,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="detected-plates-body">
-                                    <!-- Rows will be dynamically inserted here -->
+                                    <tr><td colspan="4">Loading...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -100,7 +100,7 @@
         function updateDetectedPlates() {
             const platesError = document.getElementById('plates-error');
             platesError.classList.add('d-none');
-
+            const tbody = document.getElementById('detected-plates-body');
             fetch(fetchPlatesUrl)
                 .then(response => {
                     if (!response.ok) {
@@ -109,7 +109,11 @@
                     return response.json();
                 })
                 .then(data => {
-                    const tbody = document.getElementById('detected-plates-body');
+                    tbody.innerHTML = ''; // Clear loading message
+                    if (data.plates.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4">No plates detected yet.</td></tr>';
+                        return;
+                    }
                     data.plates.forEach(plate => {
                         const plateNumber = plate.plate;
                         if (plateRows[plateNumber]) {
@@ -144,6 +148,7 @@
                     console.error('Error fetching detected plates:', error);
                     platesError.textContent = `Error: ${error.message}. Please try again.`;
                     platesError.classList.remove('d-none');
+                    tbody.innerHTML = '<tr><td colspan="4">Error loading plates.</td></tr>';
                 });
         }
 
@@ -170,7 +175,7 @@
         // Initialize Leaflet map
         const latitude = {{ area.latitude|default:0 }};
         const longitude = {{ area.longitude|default:0 }};
-        const defaultLatLng = [latitude || -13.9626, longitude || 33.7741]; // Default to Lilongwe if null
+        const defaultLatLng = [latitude || -13.9626, longitude || 33.7741];
         const map = L.map('map').setView(defaultLatLng, 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -185,7 +190,6 @@
             let radius = 500;
             const maxRadius = 5000;
             const interval = 500;
-
             function addCircleAndIncreaseRadius() {
                 const circle = L.circle([lat, lon], {
                     color: 'red',
@@ -198,11 +202,9 @@
                     map.removeLayer(circle);
                 }, interval);
             }
-
             function animateWaves() {
                 let count = 0;
                 const maxCount = 5;
-
                 function animate() {
                     if (count < maxCount) {
                         addCircleAndIncreaseRadius();
