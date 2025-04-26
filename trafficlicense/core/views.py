@@ -147,7 +147,7 @@ def vehicle_list(request):
         'page': page,
         'total_pages': (total + per_page - 1) // per_page,
     }
-    return render(request, 'vehicles/vehicle_list.html', context)
+    return render(request, 'vehicle_list.html', context)
 
 @login_required
 def vehicle_detail(request, plate_number):
@@ -157,7 +157,7 @@ def vehicle_detail(request, plate_number):
         'vehicle': vehicle,
         'today': timezone.now().date(),
     }
-    return render(request, 'vehicles/vehicle_detail.html', context)
+    return render(request, 'vehicle_detail.html', context)
 
 def all_vehicles(request):
     """Display all registered vehicles."""
